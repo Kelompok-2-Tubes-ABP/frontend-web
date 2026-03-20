@@ -1,37 +1,24 @@
 <script setup>
-import { ref } from "vue"
-import router from "@/router"
+import { ref } from "vue";
+import router from "@/router";
 import adminRegister from "@/assets/admin-register.svg"
-import inputName from "@/assets/icon-inputname.svg"
 import inputMail from "@/assets/icon-inputmail.svg"
-import inputPhone from "@/assets/icon-inputphone.svg"
-import inputOrg from "@/assets/icon-inputorg.svg"
 import inputPass from "@/assets/icon-inputpass.svg"
 import eyeOn from '@/assets/icon-eyeon.svg'
 import eyeOff from '@/assets/icon-eyeoff.svg'
 const showPassword = ref(false)
-const showConfirmPassword = ref(false)
 const successMessage = ref("")
 
+
 const form = ref({
-  firstName: "",
-  lastName: "",
   email: "",
-  phone: "",
-  organization: "",
   password: "",
-  confirmPassword: "",
   agree: false
 })
 
 const errors = ref({
-  firstName: "",
-  lastName: "",
   email: "",
-  phone: "",
-  organization: "",
   password: "",
-  confirmPassword: "",
   agree: ""
 })
 
@@ -39,16 +26,6 @@ const submitForm = () => {
   Object.keys(errors.value).forEach(key => errors.value[key] = "")
 
   let valid = true
-
-  if (!form.value.firstName) {
-    errors.value.firstName = "First name wajib diisi"
-    valid = false
-  }
-
-  if(!form.value.lastName) {
-    errors.value.lastName = "Last name wajib diisi"
-    valid = false
-  }
 
   if (!form.value.email) {
     errors.value.email = "Email wajib diisi"
@@ -60,30 +37,14 @@ const submitForm = () => {
     valid = false
   }
 
-  if(!form.value.organization) {
-    errors.value.organization = "Organization wajib diisi"
-    valid = false
-  }
-
   if (form.value.password.length < 8) {
     errors.value.password = "Minimal 8 karakter"
     valid = false
   }
 
-  if (form.value.password !== form.value.confirmPassword) {
-    errors.value.confirmPassword = "Password tidak sama"
-    valid = false
-  }
-
-  if (!form.value.agree) {
-    errors.value.agree = "Harus setuju Terms and Conditions"
-    valid = false
-  }
-
   if (!valid) return
-
   console.log("Data:", form.value)
-  successMessage.value = "Account berhasil dibuat!"
+  successMessage.value = "Berhasil Login!"
   setTimeout(() => {successMessage.value = ""}, 3000)
   setTimeout(() => {router.push("/")}, 3500)
     
@@ -93,35 +54,11 @@ const submitForm = () => {
 <template>
   <div class="container">
     <div class="card">
-      <p class="back"  @click="router.push('/')" >← Back to Login</p>
-     
-    
        <img :src="adminRegister" class="icon">
-   
-      <h2>Create Admin Account</h2>
-      <p class="subtitle">Register for FinTech Admin Dashboard</p>
+      <h2>Admin Login</h2>
+      <p class="subtitle">FinTech Admin Dashboard</p>
 
       <div class="form">
-        <div class="row">
-          <div class="field">
-            <label>First Name</label>
-              <div class="input-wrapper">
-                <img :src= "inputName" class="input-icon" />
-                <input v-model="form.firstName" placeholder="First Name" />
-            </div>
-            <span class="error" v-if="errors.firstName">{{ errors.firstName }}</span>
-          </div>
-
-          <div class="field">
-            <label>Last Name</label>
-              <div class="input-wrapper">
-                <img :src="inputName" class="input-icon" />
-                <input v-model="form.lastName" placeholder="Last Name" />
-                <span class="error" v-if="errors.lastName">{{ errors.lastName }}</span>
-              </div>  
-          </div>
-        </div>
-
         <div class="field">
           <label>Email Address</label>
             <div class="input-wrapper">
@@ -130,81 +67,38 @@ const submitForm = () => {
             </div>
             <span class="error" v-if="errors.email">{{ errors.email }}</span>
         </div>
-
-        <div class="row">
-          <div class="field">
-            <label>Phone Number (Optional)</label>
-            <div class="input-wrapper">
-              <img :src="inputPhone" class="input-icon" />
-              <input v-model="form.phone" placeholder="Phone Number" />
-            </div>
-          </div>
-
-          <div class="field">
-            <label>Organization</label>
-            <div class="input-wrapper">
-              <img :src="inputOrg" class="input-icon" />
-            <input v-model="form.organization" placeholder="Organization" />
-            </div>
-            <span class="error" v-if="errors.organization">{{ errors.organization }}</span>
-          </div>
-        </div>
         
-        <div class="field">
-          <label>Password</label>
-          <div class="input-wrapper">
-            <img :src="inputPass" class="input-icon" />
+            <div class="field">
+            <label>Password</label>
+            <div class="input-wrapper">
+                <img :src="inputPass" class="input-icon" />
 
-            <input 
-              :type="showPassword ? 'text' : 'password'"
-              v-model="form.password" 
-              placeholder="Password" 
-            />
+                <input 
+                :type="showPassword ? 'text' : 'password'"
+                v-model="form.password" 
+                placeholder="Password" 
+                />
 
-            <img 
-              :src="showPassword ? eyeOff : eyeOn"
-              class="eye-icon"
-              @click="showPassword = !showPassword"
-            />
-          </div>
-          <span class="error" v-if="errors.password">{{ errors.password }}</span>
-        </div>
-
-        <div class="field">
-          <label>Confirm Password</label>
-          <div class="input-wrapper">
-            <img :src="inputPass" class="input-icon" />
-
-            <input 
-              :type="showConfirmPassword ? 'text' : 'password'"
-              v-model="form.confirmPassword" 
-              placeholder=" Confirm Password" 
-            />
-
-            <img 
-              :src="showConfirmPassword ? eyeOff : eyeOn"
-              class="eye-icon"
-              @click="showConfirmPassword = !showConfirmPassword"
-            />
-          </div>  
-          <span class="error" v-if="errors.confirmPassword">{{ errors.confirmPassword }}</span>
-        </div>
+                <img 
+                :src="showPassword ? eyeOff : eyeOn"
+                class="eye-icon"
+                @click="showPassword = !showPassword"
+                />
+            </div>
+            <span class="error" v-if="errors.password">{{ errors.password }}</span>
+            </div>
       </div>
+            <button @click="submitForm">Login</button>
 
-        <label class="checkbox">
-          <input type="checkbox" v-model="form.agree" />
-          I agree to the<a href="/terms">Terms and Conditions</a> and <a href="/privacy">Privacy Policy</a>
-        </label>
+            <div v-if="successMessage" class="success-alert">
+            {{ successMessage }}
+            </div>
+        
+            <p class="login">
+            Don't have an account? <a href="/adminRegister">Register here</a>
+            </p>
 
-        <button @click="submitForm">Create Account</button>
-
-        <div v-if="successMessage" class="success-alert">
-          {{ successMessage }}
-        </div>
-
-        <p class="login">
-          Already have an account? <a href="/">Login here</a>
-        </p>
+            <p>Secure admin access only</p>
     </div>
     <P class = "copyright">© 2026 FinTech Admin Dashboard. All rights reserved.</P>
   </div>
@@ -212,7 +106,7 @@ const submitForm = () => {
 
 <style scoped>
 .container {
-   height: 100vh;
+  height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -236,11 +130,11 @@ const submitForm = () => {
   animation: fadeIn 1s ease-in-out;
 }
 
-.back {
-  font-size: 24px;
+.card p{
+  text-align: center;
+  font-size: 20px;
   color: #6b7280;
-  margin-bottom: 20px;
-  cursor: pointer;
+  margin-top: 20px;
 }
 
 .icon {
@@ -303,21 +197,17 @@ h2 {
 }
 
 .form {
-  width: 100%;
-  max-width: fit-content;
+  width: 93%;
+  
 }
-
-.row {
-  display: flex;
-  gap: 100px;
-  }
 
 .field {
   flex: 1; 
   display: flex;
   flex-direction: column;
-  margin-bottom: 30px;
+  margin-bottom: 18px;
   min-width: 0;
+  padding: 0 10px;
 }
 
 
@@ -383,10 +273,11 @@ button {
 button:hover {
   background: #243a8a;
 }
-.login{
+.card .login{
   text-align: center;
   margin-top: 30px;
   font-size: 20px;
+  color: black;
 }
 
 a[href]{
