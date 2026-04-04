@@ -46,7 +46,7 @@ const submitForm = () => {
   console.log("Data:", form.value)
   successMessage.value = "Berhasil Login!"
   setTimeout(() => {successMessage.value = ""}, 3000)
-  setTimeout(() => {router.push("/")}, 3500)
+  setTimeout(() => {router.push("/adminDashboard")}, 3500)
     
 }
 </script>
