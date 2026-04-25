@@ -5,6 +5,7 @@ import AdminDashboard from '@/views/AdminDashboard.vue'
 import AdminUsers from '@/views/AdminUsers.vue'
 import AdminTransactions from '@/views/AdminTransactions.vue'
 import AdminInvestments from '@/views/AdminInvestments.vue'
+import AdminBudgets from '@/views/AdminBudgets.vue'
 
 const routes = [
   {
@@ -41,6 +42,12 @@ const routes = [
     path: '/adminInvestments',
     name: 'AdminInvestments',
     component: AdminInvestments
+  },
+
+  {
+  path: '/adminBudgets',
+  name: 'AdminBudgets',
+  component: AdminBudgets
   }
 
 ]
