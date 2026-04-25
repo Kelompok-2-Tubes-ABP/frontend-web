@@ -35,11 +35,11 @@ const activeRange = ref('daily')
                 <img :src="iconUsers" class="icon-sidebar">
                 Users
             </a>
-            <a>
+            <a @click.prevent="$router.push('/adminTransactions')">
                 <img :src="iconTransactions" class="icon-sidebar">
                 Transactions
             </a>
-            <a>
+            <a @click.prevent="$router.push('/adminInvestments')">
                 <img :src="iconInvestments" class="icon-sidebar">
                 Investments
             </a>

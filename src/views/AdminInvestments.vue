@@ -13,34 +13,35 @@ import iconHeader from '@/assets/icon-header.svg';
 import iconNotifications2 from '@/assets/icon-notifications2.svg';
 import { ref, computed, watch } from "vue";
 const currentPage = ref(1);
-const perPage = 15;
+const perPage = 10;
 const search = ref("");
 const status = ref("");
-const users = ref([
-  { id: 1, name: "John Doe", email: "john.doe@example.com", status: "Active", joinDate: "2024-01-15", balance: "$12,450" },
-  { id: 2, name: "Jane Smith", email: "jane.smith@example.com", status: "Active", joinDate: "2024-02-20", balance: "$8,230" },
-  { id: 3, name: "Mike Johnson", email: "mike.j@example.com", status: "Disabled", joinDate: "2024-01-08", balance: "$5,120" },
-  { id: 4, name: "Sarah Wilson", email: "sarah.w@example.com", status: "Active", joinDate: "2024-03-12", balance: "$15,890" },
-  { id: 5, name: "Tom Brown", email: "tom.brown@example.com", status: "Pending", joinDate: "2024-03-14", balance: "$2,340" }, 
+const data = ref([
+  {id: "INV001", user: "John Doe", asset: "Apple Inc (AAPL)", invested: 15000, current: 16500, change: 10, status: "Active", date: "2026-01-15",},
+  {id: "INV002", user: "Jane Smith", asset: "Bitcoin (BTC)", invested: 25000, current: 27800, change: 11.2, status: "Active", date: "2026-02-20",},
+  {id: "INV003", user: "Mike Johnson", asset: "Tesla Inc (TSLA)", invested: 12000, current: 11200, change: -6.7, status: "Active", date: "2026-01-08",},
+  {id: "INV004", user: "Sarah Wilson", asset: "S&P 500 ETF", invested: 30000, current: 32400, change: 8, status: "Active", date: "2026-03-12",},
+  {id: "INV005", user: "Tom Brown", asset: "Ethereum (ETH)", invested: 8000, current: 7200, change: -10, status: "Closed", date: "2026-02-05",},
+  {id: "INV006", user: "Emily Davis", asset: "Amazon (AMZN)", invested: 20000, current: 22600, change: 13, status: "Active", date: "2026-01-28",},
 ]);
 
 const totalPages = computed(() => {
-  return Math.ceil(filteredUsers.value.length / perPage);
+  return Math.ceil(filteredData.value.length / perPage);
 });
 
 const paginatedUsers = computed(() => {
   const start = (currentPage.value - 1) * perPage;
   const end = start + perPage;
-  return filteredUsers.value.slice(start, end);
+  return filteredData.value.slice(start, end);
 });
 
-const filteredUsers = computed(() => {
-  return users.value.filter(u => {
-    const s = search.value.toLowerCase();
+const filteredData = computed(() => {
+  return data.value.filter(u => {
+    const s = search.value.toLowerCase(); 
 
     const matchSearch =
-      u.name.toLowerCase().includes(s) ||
-      u.email.toLowerCase().includes(s);
+      u.user.toLowerCase().includes(s) ||
+      u.asset.toLowerCase().includes(s);
 
     const matchStatus =
       !status.value || u.status === status.value;
@@ -67,7 +68,7 @@ watch([search, status], () => {
                 <img :src="iconDashboard" class="icon-sidebar">
                 Dashboard
             </a>
-            <a class="active">
+            <a @click.prevent="$router.push('/adminUsers')  ">
                 <img :src="iconUsers" class="icon-sidebar">
                 Users
             </a>
@@ -75,7 +76,7 @@ watch([search, status], () => {
                 <img :src="iconTransactions" class="icon-sidebar">
                 Transactions
             </a>
-            <a @click.prevent="$router.push('/adminInvestments')">
+            <a class='active'>
                 <img :src="iconInvestments" class="icon-sidebar">
                 Investments
             </a>
@@ -118,26 +119,45 @@ watch([search, status], () => {
         </div>
 
         <!-- Title -->
-        <h1>User Management</h1>
-        <p class="subtitle">Manage and monitor user accounts</p>
+        <h1>Investment Management</h1>
+        <p class="subtitle">Track and manage user investments</p>
+
+
+        <div class="cards">
+          <div class="card">
+            <p>Total Invested</p>
+            <h2>$110,000</h2>
+          </div>
+          <div class="card">
+            <p>Current Value</p>
+            <h2>$117,700</h2>
+          </div>
+          <div class="card">
+            <p>Total Gain/Loss</p>
+            <h2 style="color:green">$7,700</h2>
+          </div>
+          <div class="card">
+            <p>Performance</p>
+            <h2 style="color:green">7.00%</h2>
+          </div>
+      </div>
 
         <!-- Cards -->
         <div class="card">
-            <h2>User List</h2>
+            <h2>Investment Portfolio </h2>
 
             <!-- Filter -->
             <div class="filter">
             <input
                 type="text"
-                placeholder="Search by name or email..."
+                placeholder="Search Investments..."
                 v-model="search"
             />
 
             <select v-model="status">
                 <option value="">All Status</option>
                 <option>Active</option>
-                <option>Disabled</option>
-                <option>Pending</option>
+                <option>Closed</option>
             </select>
             </div>
 
@@ -146,31 +166,33 @@ watch([search, status], () => {
             <thead>
                 <tr>
                 <th>ID</th>
-                <th>Name</th>
-                <th>Email</th>
+                <th>User</th>
+                <th>Asset</th>
+                <th>Invested</th>
+                <th>Current Value</th>
+                <th>Change</th>
+                <th>Price Trend</th>
                 <th>Status</th>
-                <th>Join Date</th>
-                <th>Balance</th>
-                <th class="action">Actions</th>
+                <th>Date</th>
                 </tr>
             </thead>
 
             <tbody>
                 <tr v-for="u in paginatedUsers" :key="u.id">
                 <td>#{{ u.id }}</td>
-                <td>{{ u.name }}</td>
-                <td>{{ u.email }}</td>
-
+                <td>{{ u.user }}</td>
+                <td>{{ u.asset }}</td>
+                <td>${{ u.invested}}</td>
+                <td>${{ u.current}}</td>
+                <td>{{ u.change }}%</td>
+                <td></td>
                 <td>
                     <span :class="['badge', u.status.toLowerCase()]">
                     {{ u.status }}
                     </span>
                 </td>
 
-                <td>{{ u.joinDate }}</td>
-                <td class="bold">{{ u.balance }}</td>
-
-                <td class="action">⋮</td>
+                <td>{{ u.date }}</td>
                 </tr>
             </tbody>
             </table>
@@ -181,9 +203,9 @@ watch([search, status], () => {
             Showing 
             {{ (currentPage - 1) * perPage + 1 }} 
             to 
-            {{ Math.min(currentPage * perPage, filteredUsers.length) }} 
+            {{ Math.min(currentPage * perPage, filteredData.length) }} 
             of 
-            {{ filteredUsers.length }} Users
+            {{ filteredData.length }} Users
           </p>
               <div class="pagination">
                 <button 
@@ -369,6 +391,13 @@ h1 {
   margin-bottom: 20px;
   font-size: 24px;
   margin-top: 15px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+  margin-bottom: 20px;
 }
 
 .card h2 {

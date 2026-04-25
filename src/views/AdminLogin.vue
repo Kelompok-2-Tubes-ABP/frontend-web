@@ -6,8 +6,10 @@ import inputMail from "@/assets/icon-inputmail.svg"
 import inputPass from "@/assets/icon-inputpass.svg"
 import eyeOn from '@/assets/icon-eyeon.svg'
 import eyeOff from '@/assets/icon-eyeoff.svg'
+import axios from "axios";
 const showPassword = ref(false)
 const successMessage = ref("")
+const errorMessage = ref("")
 
 
 const form = ref({
@@ -22,7 +24,7 @@ const errors = ref({
   agree: ""
 })
 
-const submitForm = () => {
+const submitForm = async() => {
   Object.keys(errors.value).forEach(key => errors.value[key] = "")
 
   let valid = true
@@ -43,11 +45,26 @@ const submitForm = () => {
   }
 
   if (!valid) return
-  console.log("Data:", form.value)
-  successMessage.value = "Berhasil Login!"
-  setTimeout(() => {successMessage.value = ""}, 3000)
-  setTimeout(() => {router.push("/adminDashboard")}, 3500)
-    
+
+  try{
+    const res = await axios.post("http://localhost:8080/auth/login", {
+      email: form.value.email,
+      password: form.value.password
+    })
+    console.log("Data:", res.data)
+    errorMessage.value = ""
+    successMessage.value = "Berhasil Login!"
+    setTimeout(() => {successMessage.value = ""}, 3000)
+    setTimeout(() => {router.push("/adminDashboard")}, 3000)
+    } catch (error) {
+    console.error("Error:", error)
+      if (error.response) {
+        errorMessage.value = error.response?.data?.message || "Email atau password salah"
+      } else {
+        errorMessage.value = "Terjadi kesalahan. Silakan coba lagi."
+      }
+  }
+  
 }
 </script>
 
@@ -92,6 +109,9 @@ const submitForm = () => {
 
             <div v-if="successMessage" class="success-alert">
             {{ successMessage }}
+            </div>
+            <div v-if="errorMessage" class="error-alert">
+            {{ errorMessage }}
             </div>
         
             <p class="login">
@@ -311,6 +331,19 @@ a[href]{
   background: #ecfdf5;
   color: #065f46;
   border: 1px solid #10b981;
+  padding: 16px 16px;
+  border-radius: 8px;
+  font-size: 25px;
+  margin-bottom: 20px;
+  margin-top: 10px;
+  text-align: center;
+  animation: fadeSlide 0.3s ease;
+}
+
+.error-alert {
+  background: #ff3131;
+  color: #ffffff;
+  border: 1px solid #ea0c0c;
   padding: 16px 16px;
   border-radius: 8px;
   font-size: 25px;
