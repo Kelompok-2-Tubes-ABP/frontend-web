@@ -15,67 +15,45 @@ ChartJS.register(
 )
 
 const props = defineProps({
-    range: String
+  data: {
+    type: Object,
+    default: () => ({})
+  },
+  range: String
 })
 
 const chartData = computed(() => {
-    if(props.range ==='Monthly'){
-        return {
-            labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sept','Okt','Des'],
-            datasets: [
-                {
-                label: 'Revenue ($)',
-                borderColor: '#3b82f6',
-                backgroundColor: '#3b82f6',
-                tension: 0.4,
-                pointRadius: 6,      
-                pointBackgroundColor: '#fff',
-                pointBorderColor: '#3b82f6',
-                pointBorderWidth: 2
+  const labels = props.range === 'Monthly'
+    ? ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    : ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
 
-                },
-                {
-                label: 'Transactions',
-                data: [4500, 5200, 4800, 6100, 7300, 6900, 5900],
-                borderColor: '#10b981',
-                backgroundColor: '#10b981',
-                tension: 0.4,
-                pointRadius: 6,      
-                pointBackgroundColor: '#fff',
-                pointBorderColor: '#10b981',
-                pointBorderWidth: 2
-                }
-            ]
-        }
-    }
-
-        return  {
-        labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
-        datasets: [
-            {
-            label: 'Revenue ($)',
-            borderColor: '#3b82f6',
-            backgroundColor: '#3b82f6',
-            tension: 0.4,
-            pointRadius: 6,      
-            pointBackgroundColor: '#fff',
-            pointBorderColor: '#3b82f6',
-            pointBorderWidth: 2
-
-            },
-            {
-            label: 'Transactions',
-            data: [4500, 5200, 4800, 6100, 7300, 6900, 5900],
-            borderColor: '#10b981',
-            backgroundColor: '#10b981',
-            tension: 0.4,
-            pointRadius: 6,      
-            pointBackgroundColor: '#fff',
-            pointBorderColor: '#10b981',
-            pointBorderWidth: 2
-            }
-        ]
-    }
+  return {
+    labels,
+    datasets: [
+      {
+        label: 'Revenue ($)',
+        data: props.data?.revenue || [],
+        borderColor: '#3b82f6',
+        backgroundColor: '#3b82f6',
+        tension: 0.4,
+        pointRadius: 6,
+        pointBackgroundColor: '#fff',
+        pointBorderColor: '#3b82f6',
+        pointBorderWidth: 2
+      },
+      {
+        label: 'Transactions',
+        data: props.data?.transactions || [],
+        borderColor: '#10b981',
+        backgroundColor: '#10b981',
+        tension: 0.4,
+        pointRadius: 6,
+        pointBackgroundColor: '#fff',
+        pointBorderColor: '#10b981',
+        pointBorderWidth: 2
+      }
+    ]
+  }
 })
 const options = {
   responsive: true,

@@ -80,7 +80,7 @@ watch([search, status], () => {
                 <img :src="iconInvestments" class="icon-sidebar">
                 Investments
             </a>
-            <a>
+            <a @click.prevent="$router.push('/adminBudgets')">
                 <img :src="iconBudgets" class="icon-sidebar">
                 Budgets
             </a>

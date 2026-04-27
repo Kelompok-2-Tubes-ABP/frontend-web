@@ -23,13 +23,15 @@ const routes = [
   {
   path: '/adminDashboard',
   name: 'AdminDashboard',
-  component: AdminDashboard
+  component: AdminDashboard,
+  meta: { requiresAuth: true }
   },
 
   {
     path: '/adminUsers',
     name: 'AdminUsers',
-    component: AdminUsers
+    component: AdminUsers,
+    meta: { requiresAuth: true }
   },
 
   {
@@ -55,6 +57,22 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+router.beforeEach((to, from, next) => {
+  const token = localStorage.getItem('token')
+
+  // kalau butuh login tapi gak ada token
+  if (to.meta.requiresAuth && !token) {
+    next('/') // balik ke login page
+  } 
+  // kalau sudah login tapi buka login page
+  else if (to.path === '/' && token) {
+    next('/adminDashboard')
+  }
+  else {
+    next()
+  }
 })
 
 export default router

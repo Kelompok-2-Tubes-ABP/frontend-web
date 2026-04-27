@@ -47,11 +47,13 @@ const submitForm = async() => {
   if (!valid) return
 
   try{
-    const res = await axios.post("http://localhost:8080/auth/login", {
+    const res = await axios.post("http://localhost:8080/admin/login", {
       email: form.value.email,
       password: form.value.password
     })
     console.log("Data:", res.data)
+    localStorage.setItem('token', res.data.token)
+    console.log('TOKEN:', res.data.token)
     errorMessage.value = ""
     successMessage.value = "Berhasil Login!"
     setTimeout(() => {successMessage.value = ""}, 3000)
@@ -113,10 +115,6 @@ const submitForm = async() => {
             <div v-if="errorMessage" class="error-alert">
             {{ errorMessage }}
             </div>
-        
-            <p class="login">
-            Don't have an account? <a href="/adminRegister">Register here</a>
-            </p>
 
             <p>Secure admin access only</p>
     </div>
