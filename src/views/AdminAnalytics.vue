@@ -61,6 +61,7 @@ const getProgressBarClass = (status) => {
 
 <template>
   <div class="layout">
+    <!-- Sidebar -->
     <aside class="sidebar">
       <div class="brand">
         <img :src="FintechLogo" class="logo">
@@ -95,7 +96,7 @@ const getProgressBarClass = (status) => {
           <img :src="iconNotifications" class="icon-sidebar">
           Notifications
         </a>
-        <a @click.prevent="$router.push('/adminAudit')">
+        <a @click.prevent="$router.push('/adminAuditLogs')">
           <img :src="iconAuditLogs" class="icon-sidebar">
           Audit Logs
         </a>
