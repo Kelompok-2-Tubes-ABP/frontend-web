@@ -266,11 +266,7 @@ const closeSidebarOnMobile = () => {
   position: relative;
 }
 
-/* ========================================
-   DESKTOP STYLES (Default - Mobile First Override)
-   ======================================== */
 
-/* Sidebar - Desktop Default */
 .sidebar {
   width: 250px;
   background: #1e3a8a;
@@ -278,7 +274,7 @@ const closeSidebarOnMobile = () => {
   display: flex;
   flex-direction: column;
   padding: 20px;
-  flex-shrink: 0; /* Prevent shrinking */
+  flex-shrink: 0; 
 }
 
 .brand {
@@ -341,7 +337,6 @@ const closeSidebarOnMobile = () => {
   font-size: 20px;
 }
 
-/* Main Content - Desktop Default */
 .main {
   flex: 1;
   padding: 0 30px 20px 30px; 
@@ -490,7 +485,6 @@ h1 {
   color: #ef4444;
 }
 
-/* Section Card */
 .section-card {
   background: white;
   padding: 24px;
@@ -589,7 +583,6 @@ h1 {
   color: #6b7280;
 }
 
-/* Status Badge */
 .status-badge {
   padding: 4px 12px;
   border-radius: 6px;
@@ -612,7 +605,6 @@ h1 {
   color: #f59e0b; 
 }
 
-/* Progress Bar */
 .progress-container { 
   margin-top: 12px; 
 }
@@ -700,9 +692,8 @@ h1 {
   transform: scale(1.1);
 }
 
-/* Sidebar Overlay for Mobile */
 .sidebar-overlay {
-  display: none; /* Hidden by default (desktop) */
+  display: none; 
   position: fixed;
   top: 0;
   left: 0;
@@ -724,12 +715,10 @@ h1 {
     display: flex;
   }
   
-  /* Show overlay when sidebar is open */
   .layout.sidebar-open .sidebar-overlay {
     display: block;
   }
   
-  /* Sidebar - Tablet/Mobile */
   .sidebar {
     position: fixed;
     top: 0;
@@ -751,15 +740,14 @@ h1 {
     transform: translateX(0);
   }
   
-  /* Compact brand area - MAJOR REDUCTION */
   .brand {
     display: flex;
     justify-content: center;
     align-items: center;
     gap: 8px;
-    margin-bottom: 20px; /* Reduced from 100px */
+    margin-bottom: 20px; 
     margin-top: 5px;
-    flex-shrink: 0; /* Prevent shrinking */
+    flex-shrink: 0; 
   }
   
   .logo {
@@ -771,10 +759,10 @@ h1 {
     font-size: 18px;
   }
   
-  /* Navigation - compact */
+  
   .sidebar nav {
-    flex: 1; /* Take available space */
-    overflow-y: auto; /* Allow nav to scroll if needed */
+    flex: 1; /
+    overflow-y: auto; 
     margin-bottom: 10px;
   }
   
@@ -784,7 +772,7 @@ h1 {
     gap: 10px;
     padding: 10px 12px;
     border-radius: 8px;
-    margin-bottom: 4px; /* Reduced gap */
+    margin-bottom: 4px; 
     cursor: pointer;
     opacity: 0.9;
     font-size: 14px; /* Smaller font */
@@ -812,16 +800,16 @@ h1 {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-top: auto; /* Push to bottom */
+    margin-top: auto; 
     cursor: pointer;
     font-size: 14px;
     padding: 10px 12px;
     border-radius: 8px;
-    flex-shrink: 0; /* Prevent shrinking */
+    flex-shrink: 0; 
     white-space: nowrap;
   }
   
-  /* Main content - full width on mobile */
+  
   .main {
     width: 100%;
   }
@@ -833,8 +821,8 @@ h1 {
 
 @media (max-width: 640px) {
   .sidebar {
-    width: 80%; /* Reduced from 85% */
-    max-width: 240px; /* Reduced from 280px */
+    width: 80%; 
+    max-width: 240px; 
     padding: 10px;
   }
   
@@ -856,7 +844,7 @@ h1 {
     margin-left: -30px;
   }
   
-  /* Even more compact for mobile */
+  
   .brand {
     margin-bottom: 15px;
     margin-top: 0;
@@ -876,7 +864,7 @@ h1 {
     padding: 10px 10px;
     font-size: 13px;
     margin-bottom: 3px;
-    min-height: 44px; /* WCAG minimum */
+    min-height: 44px; 
   }
   
   .icon-sidebar {
@@ -891,7 +879,6 @@ h1 {
   }
 }
 
-/* Small Mobile: Maximum compression */
 @media (max-width: 480px) {
   .sidebar {
     width: 85%;
@@ -937,7 +924,6 @@ h1 {
   }
 }
 
-/* Extra small screens or short viewports */
 @media (max-height: 600px) and (max-width: 1024px) {
   .brand {
     margin-bottom: 8px;
@@ -967,7 +953,6 @@ h1 {
   }
 }
 
-/* Ensure proper scrolling when needed */
 @media (max-width: 1024px) {
   .sidebar::-webkit-scrollbar {
     width: 4px;
@@ -987,14 +972,13 @@ h1 {
     -webkit-overflow-scrolling: touch;
   }
   
-  /* Ensure nav can scroll independently if needed */
+
   .sidebar nav {
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1);
   }
 }
 
-/* Improve touch targets on mobile */
 @media (hover: none) and (pointer: coarse) {
   .sidebar nav a,
   .logout {
@@ -1013,54 +997,53 @@ h1 {
   .sidebar {
     height: 100vh;
     max-height: 100vh;
-    overflow: hidden; /* Stops the whole sidebar from scrolling */
+    overflow: hidden; 
     display: flex;
     flex-direction: column;
-    padding: 15px; /* Reduced from 20px */
+    padding: 15px; /
   }
 
-  /* COMPACT BRAND AREA */
+  
   .brand {
-    margin-bottom: 15px !important; /* Reduced from 100px */
+    margin-bottom: 15px !important; 
     margin-top: 5px;
   }
 
   .logo {
-    width: 35px; /* Reduced from 50px */
+    width: 35px; 
     height: 35px;
   }
 
   .titlelogo {
-    font-size: 20px; /* Reduced from 30px */
+    font-size: 20px; 
   }
 
-  /* COMPACT NAVIGATION */
   .sidebar nav {
-    flex: 1; /* Fills remaining space */
-    overflow-y: auto; /* Only scrolls if strictly necessary */
+    flex: 1; 
+    overflow-y: auto; 
     margin-bottom: 10px;
   }
 
   .sidebar nav a {
-    margin-bottom: 5px; /* Reduced from 20px - HUGE SPACE SAVINGS */
+    margin-bottom: 5px; 
     padding: 8px 10px;
-    font-size: 15px; /* Reduced from 20px */
+    font-size: 15px; 
   }
 
   .icon-sidebar {
-    width: 22px; /* Reduced from 30px */
+    width: 22px; 
     height: 22px;
   }
 
-  /* LOCK LOGOUT TO BOTTOM */
+
   .logout {
-    margin-top: auto; /* Pushes to bottom */
+    margin-top: auto; 
     flex-shrink: 0;
     padding: 10px;
-    font-size: 15px; /* Reduced from 20px */
+    font-size: 15px; 
   }
   
-  /* Scrollbar styling for the inner nav just in case */
+  
   .sidebar nav::-webkit-scrollbar {
     width: 4px;
   }
@@ -1072,12 +1055,12 @@ h1 {
 }
 
 @media (min-width: 1024px) and (max-width: 1280px) {
-  /* Reduce padding on the sidebar container */
+  
   .sidebar {
     padding: 15px; 
   }
 
-  /* COMPACT BRAND AREA: Reduce 100px margin to 30px */
+  
   .brand {
     margin-bottom: 30px !important;
     margin-top: 10px;
@@ -1092,21 +1075,20 @@ h1 {
     font-size: 22px;
   }
 
-  /* COMPACT NAVIGATION: Reduce 20px margin to 8px */
   .sidebar nav a {
     margin-bottom: 8px !important;
-    font-size: 16px; /* Reduced from 20px */
+    font-size: 16px; 
     padding: 8px 12px;
   }
 
   .icon-sidebar {
-    width: 24px; /* Reduced from 30px */
+    width: 24px; 
     height: 24px;
   }
 
-  /* COMPACT LOGOUT */
+
   .logout {
-    font-size: 16px; /* Reduced from 20px */
+    font-size: 16px; 
     padding: 10px 12px;
   }
 }
