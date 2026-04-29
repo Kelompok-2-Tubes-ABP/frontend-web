@@ -15,6 +15,9 @@ import iconBudgetActive from '@/assets/icon-budgetActive.svg';
 import iconBudgetAttention from '@/assets/icon-budgetsAttention.svg';
 import { ref, computed } from "vue";
 
+// Responsive sidebar state
+const isSidebarOpen = ref(false);
+
 // Budget Tracking Data
 const budgets = ref([
   { id: 1, user: "John Doe", category: "Groceries", period: "Monthly • 2026-03-01 to 2026-03-31", spent: 650, limit: 800, status: "Safe" },
@@ -57,51 +60,81 @@ const getProgressBarClass = (status) => {
   if (status === "Near Limit") return "progress-near";
   return "";
 };
+
+// Toggle sidebar
+const toggleSidebar = () => {
+  isSidebarOpen.value = !isSidebarOpen.value;
+};
+
+// Close sidebar when clicking outside on mobile
+const closeSidebarOnMobile = () => {
+  if (window.innerWidth < 1024) {
+    isSidebarOpen.value = false;
+  }
+};
 </script>
 
 <template>
-  <div class="layout">
+  <div class="layout" :class="{ 'sidebar-open': isSidebarOpen }">
+    <!-- Sidebar Toggle Button (Left Center) - Only visible on mobile/tablet -->
+    <button 
+      class="sidebar-toggle" 
+      @click="toggleSidebar"
+      :aria-label="isSidebarOpen ? 'Close sidebar' : 'Open sidebar'"
+      :class="{ 'active': isSidebarOpen }"
+    >
+      <svg v-if="!isSidebarOpen" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 18l6-6-6-6"/>
+      </svg>
+      <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M15 18l-6-6 6-6"/>
+      </svg>
+    </button>
+
+    <!-- Sidebar Overlay for Mobile -->
+    <div v-if="isSidebarOpen" class="sidebar-overlay" @click="closeSidebarOnMobile"></div>
+
     <aside class="sidebar">
       <div class="brand">
-        <img :src="FintechLogo" class="logo">
+        <img :src="FintechLogo" class="logo" alt="Logo">
         <div class="titlelogo">FinTech</div>
       </div>
       <nav>
-        <a @click.prevent="$router.push('/adminDashboard')">
-          <img :src="iconDashboard" class="icon-sidebar">
+        <a @click.prevent="$router.push('/adminDashboard'); closeSidebarOnMobile()">
+          <img :src="iconDashboard" class="icon-sidebar" alt="">
           Dashboard
         </a>
-        <a @click.prevent="$router.push('/adminUsers')">
-          <img :src="iconUsers" class="icon-sidebar">
+        <a @click.prevent="$router.push('/adminUsers'); closeSidebarOnMobile()">
+          <img :src="iconUsers" class="icon-sidebar" alt="">
           Users
         </a>
-        <a @click.prevent="$router.push('/adminTransactions')">
-          <img :src="iconTransactions" class="icon-sidebar">
+        <a @click.prevent="$router.push('/adminTransactions'); closeSidebarOnMobile()">
+          <img :src="iconTransactions" class="icon-sidebar" alt="">
           Transactions
         </a>
-        <a @click.prevent="$router.push('/adminInvestments')">
-          <img :src="iconInvestments" class="icon-sidebar">
+        <a @click.prevent="$router.push('/adminInvestments'); closeSidebarOnMobile()">
+          <img :src="iconInvestments" class="icon-sidebar" alt="">
           Investments
         </a>
         <a class="active">
-          <img :src="iconBudgets" class="icon-sidebar">
+          <img :src="iconBudgets" class="icon-sidebar" alt="">
           Budgets
         </a>
-        <a @click.prevent="$router.push('/adminAnalytics')">
-          <img :src="iconAnalytics" class="icon-sidebar">
+        <a @click.prevent="$router.push('/adminAnalytics'); closeSidebarOnMobile()">
+          <img :src="iconAnalytics" class="icon-sidebar" alt="">
           Analytics
         </a>
-        <a @click.prevent="$router.push('/adminNotifications')">
-          <img :src="iconNotifications" class="icon-sidebar">
+        <a @click.prevent="$router.push('/adminNotifications'); closeSidebarOnMobile()">
+          <img :src="iconNotifications" class="icon-sidebar" alt="">
           Notifications
         </a>
-        <a @click.prevent="$router.push('/adminAudit')">
-          <img :src="iconAuditLogs" class="icon-sidebar">
+        <a @click.prevent="$router.push('/adminAudit'); closeSidebarOnMobile()">
+          <img :src="iconAuditLogs" class="icon-sidebar" alt="">
           Audit Logs
         </a>
       </nav>
-      <div class="logout">
-        <img :src="iconLogout" class="icon-sidebar">
+      <div class="logout" @click="closeSidebarOnMobile()">
+        <img :src="iconLogout" class="icon-sidebar" alt="">
         Logout
       </div>
     </aside>
@@ -110,11 +143,11 @@ const getProgressBarClass = (status) => {
     <main class="main">
       <!-- Header -->
       <div class="header">
-        <img :src="iconHeader" class="icon-header">
+        <img :src="iconHeader" class="icon-header" alt="">
         <input type="text" placeholder="Search users, transactions..." />
         <div class="user">
           <span class="role-badge">Superadmin</span>
-          <img :src="iconNotifications2" class="icon-header">
+          <img :src="iconNotifications2" class="icon-header" alt="">
           <div class="avatar">AD</div>
           <div class="username">Admin User</div>
         </div>
@@ -130,7 +163,7 @@ const getProgressBarClass = (status) => {
           <p class="stat-label">Total Budgets</p>
           <h2 class="stat-number">{{ totalBudgets }}</h2>
           <div class="stat-footer">
-            <img :src="iconBudgetActive" class="stat-icon active">
+            <img :src="iconBudgetActive" class="stat-icon active" alt="">
             <span class="stat-subtitle active">Active this month</span>
           </div>
         </div>
@@ -138,7 +171,7 @@ const getProgressBarClass = (status) => {
           <p class="stat-label">Over Budget</p>
           <h2 class="stat-number text-over">{{ overBudget }}</h2>
           <div class="stat-footer">
-            <img :src="iconBudgetAttention" class="stat-icon attention">
+            <img :src="iconBudgetAttention" class="stat-icon attention" alt="">
             <span class="stat-subtitle over">Needs attention</span>
           </div>
         </div>
@@ -146,7 +179,7 @@ const getProgressBarClass = (status) => {
           <p class="stat-label">Savings Goals</p>
           <h2 class="stat-number">{{ savingsGoalsCount }}</h2>
           <div class="stat-footer">
-            <img :src="iconBudgetActive" class="stat-icon active">
+            <img :src="iconBudgetActive" class="stat-icon active" alt="">
             <span class="stat-subtitle active">In progress</span>
           </div>
         </div>
@@ -230,8 +263,14 @@ const getProgressBarClass = (status) => {
   height: 100vh;
   font-family: 'Inter', sans-serif;
   background: #f5f7fb;
+  position: relative;
 }
 
+/* ========================================
+   DESKTOP STYLES (Default - Mobile First Override)
+   ======================================== */
+
+/* Sidebar - Desktop Default */
 .sidebar {
   width: 250px;
   background: #1e3a8a;
@@ -239,6 +278,7 @@ const getProgressBarClass = (status) => {
   display: flex;
   flex-direction: column;
   padding: 20px;
+  flex-shrink: 0; /* Prevent shrinking */
 }
 
 .brand {
@@ -301,6 +341,7 @@ const getProgressBarClass = (status) => {
   font-size: 20px;
 }
 
+/* Main Content - Desktop Default */
 .main {
   flex: 1;
   padding: 0 30px 20px 30px; 
@@ -619,26 +660,454 @@ h1 {
   font-weight: 500; 
 }
 
-/* Responsive */
+
+.sidebar-toggle {
+  display: none; 
+  position: fixed;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1001;
+  background: #1e3a8a;
+  color: white;
+  border: none;
+  border-radius: 0 8px 8px 0;
+  padding: 12px 8px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  width: 36px;
+  height: 48px;
+}
+
+.sidebar-toggle:hover {
+  background: #3b82f6;
+  transform: translateY(-50%) translateX(2px);
+}
+
+.sidebar-toggle.active {
+  left: 250px;
+  border-radius: 8px 0 0 8px;
+}
+
+.sidebar-toggle svg {
+  transition: transform 0.2s ease;
+}
+
+.sidebar-toggle:hover svg {
+  transform: scale(1.1);
+}
+
+/* Sidebar Overlay for Mobile */
+.sidebar-overlay {
+  display: none; /* Hidden by default (desktop) */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 999;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @media (max-width: 1024px) {
-  .summary-cards { grid-template-columns: repeat(2, 1fr); }
+  /* Show toggle button */
+  .sidebar-toggle {
+    display: flex;
+  }
+  
+  /* Show overlay when sidebar is open */
+  .layout.sidebar-open .sidebar-overlay {
+    display: block;
+  }
+  
+  /* Sidebar - Tablet/Mobile */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    max-height: 100vh;
+    width: 260px;
+    z-index: 1000;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    overflow: hidden; 
+    padding: 12px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .layout.sidebar-open .sidebar {
+    transform: translateX(0);
+  }
+  
+  /* Compact brand area - MAJOR REDUCTION */
+  .brand {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px; /* Reduced from 100px */
+    margin-top: 5px;
+    flex-shrink: 0; /* Prevent shrinking */
+  }
+  
+  .logo {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .titlelogo {
+    font-size: 18px;
+  }
+  
+  /* Navigation - compact */
+  .sidebar nav {
+    flex: 1; /* Take available space */
+    overflow-y: auto; /* Allow nav to scroll if needed */
+    margin-bottom: 10px;
+  }
+  
+  .sidebar nav a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 4px; /* Reduced gap */
+    cursor: pointer;
+    opacity: 0.9;
+    font-size: 14px; /* Smaller font */
+    text-decoration: none;
+    color: white;
+    white-space: nowrap;
+  }
+  
+  .icon-sidebar {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+  }
+  
+  .sidebar nav a:hover {
+    background: #3b82f6;
+  }
+  
+  .sidebar nav .active {
+    background: #3b82f6;
+  }
+  
+  
+  .logout {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: auto; /* Push to bottom */
+    cursor: pointer;
+    font-size: 14px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    flex-shrink: 0; /* Prevent shrinking */
+    white-space: nowrap;
+  }
+  
+  /* Main content - full width on mobile */
+  .main {
+    width: 100%;
+  }
+  
+  .summary-cards { 
+    grid-template-columns: repeat(2, 1fr); 
+  }
 }
 
-@media (max-width: 768px) {
-  .summary-cards { grid-template-columns: 1fr; }
-  .header { flex-wrap: wrap; }
-  .header input { width: 100%; margin-top: 10px; }
-  h1 { font-size: 28px; }
-  .subtitle { font-size: 14px; }
+@media (max-width: 640px) {
+  .sidebar {
+    width: 80%; /* Reduced from 85% */
+    max-width: 240px; /* Reduced from 280px */
+    padding: 10px;
+  }
+  
+  .sidebar-toggle {
+    left: 0;
+    top: 10px;
+    transform: none;
+    border-radius: 0 8px 8px 0;
+    z-index: 1002;
+    width: 30px;
+    height: 36px;
+    padding: 6px 5px;
+  }
+  
+  .sidebar-toggle.active {
+    left: 80%;
+    max-width: 240px;
+    border-radius: 8px 0 0 8px;
+    margin-left: -30px;
+  }
+  
+  /* Even more compact for mobile */
+  .brand {
+    margin-bottom: 15px;
+    margin-top: 0;
+    gap: 6px;
+  }
+  
+  .logo {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .titlelogo {
+    font-size: 16px;
+  }
+  
+  .sidebar nav a {
+    padding: 10px 10px;
+    font-size: 13px;
+    margin-bottom: 3px;
+    min-height: 44px; /* WCAG minimum */
+  }
+  
+  .icon-sidebar {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .logout {
+    padding: 10px 10px;
+    font-size: 13px;
+    min-height: 44px;
+  }
 }
 
+/* Small Mobile: Maximum compression */
 @media (max-width: 480px) {
-  .main { padding: 15px; }
-  h1 { font-size: 24px; }
-  .subtitle { font-size: 14px; }
-  .section-card { padding: 20px; }
-  .budget-header, .savings-header { flex-direction: column; }
-  .budget-amounts, .savings-amounts { align-items: flex-start; }
-  .user-with-badge { flex-direction: column; align-items: flex-start; }
+  .sidebar {
+    width: 85%;
+    max-width: 220px;
+    padding: 8px;
+  }
+  
+  .sidebar-toggle.active {
+    left: 85%;
+    max-width: 220px;
+  }
+  
+  .brand {
+    margin-bottom: 10px;
+    margin-top: 0;
+  }
+  
+  .logo {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .titlelogo {
+    font-size: 14px;
+  }
+  
+  .sidebar nav a {
+    padding: 9px 8px;
+    font-size: 12px;
+    margin-bottom: 2px;
+    gap: 8px;
+  }
+  
+  .icon-sidebar {
+    width: 18px;
+    height: 18px;
+  }
+  
+  .logout {
+    font-size: 12px;
+    padding: 9px 8px;
+    gap: 8px;
+  }
+}
+
+/* Extra small screens or short viewports */
+@media (max-height: 600px) and (max-width: 1024px) {
+  .brand {
+    margin-bottom: 8px;
+    margin-top: 0;
+  }
+  
+  .logo {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .titlelogo {
+    font-size: 14px;
+  }
+  
+  .sidebar nav a {
+    padding: 8px 10px;
+    font-size: 12px;
+    margin-bottom: 2px;
+    min-height: 40px;
+  }
+  
+  .logout {
+    padding: 8px 10px;
+    font-size: 12px;
+    min-height: 40px;
+  }
+}
+
+/* Ensure proper scrolling when needed */
+@media (max-width: 1024px) {
+  .sidebar::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  .sidebar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  
+  .sidebar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+  }
+  
+  .sidebar {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Ensure nav can scroll independently if needed */
+  .sidebar nav {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Improve touch targets on mobile */
+@media (hover: none) and (pointer: coarse) {
+  .sidebar nav a,
+  .logout {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+  
+  .sidebar-toggle {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+@media (min-width: 1025px) and (max-height: 900px) {
+  .sidebar {
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden; /* Stops the whole sidebar from scrolling */
+    display: flex;
+    flex-direction: column;
+    padding: 15px; /* Reduced from 20px */
+  }
+
+  /* COMPACT BRAND AREA */
+  .brand {
+    margin-bottom: 15px !important; /* Reduced from 100px */
+    margin-top: 5px;
+  }
+
+  .logo {
+    width: 35px; /* Reduced from 50px */
+    height: 35px;
+  }
+
+  .titlelogo {
+    font-size: 20px; /* Reduced from 30px */
+  }
+
+  /* COMPACT NAVIGATION */
+  .sidebar nav {
+    flex: 1; /* Fills remaining space */
+    overflow-y: auto; /* Only scrolls if strictly necessary */
+    margin-bottom: 10px;
+  }
+
+  .sidebar nav a {
+    margin-bottom: 5px; /* Reduced from 20px - HUGE SPACE SAVINGS */
+    padding: 8px 10px;
+    font-size: 15px; /* Reduced from 20px */
+  }
+
+  .icon-sidebar {
+    width: 22px; /* Reduced from 30px */
+    height: 22px;
+  }
+
+  /* LOCK LOGOUT TO BOTTOM */
+  .logout {
+    margin-top: auto; /* Pushes to bottom */
+    flex-shrink: 0;
+    padding: 10px;
+    font-size: 15px; /* Reduced from 20px */
+  }
+  
+  /* Scrollbar styling for the inner nav just in case */
+  .sidebar nav::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  .sidebar nav::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1280px) {
+  /* Reduce padding on the sidebar container */
+  .sidebar {
+    padding: 15px; 
+  }
+
+  /* COMPACT BRAND AREA: Reduce 100px margin to 30px */
+  .brand {
+    margin-bottom: 30px !important;
+    margin-top: 10px;
+  }
+
+  .logo {
+    width: 40px;
+    height: 40px;
+  }
+
+  .titlelogo {
+    font-size: 22px;
+  }
+
+  /* COMPACT NAVIGATION: Reduce 20px margin to 8px */
+  .sidebar nav a {
+    margin-bottom: 8px !important;
+    font-size: 16px; /* Reduced from 20px */
+    padding: 8px 12px;
+  }
+
+  .icon-sidebar {
+    width: 24px; /* Reduced from 30px */
+    height: 24px;
+  }
+
+  /* COMPACT LOGOUT */
+  .logout {
+    font-size: 16px; /* Reduced from 20px */
+    padding: 10px 12px;
+  }
 }
 </style>
