@@ -40,37 +40,43 @@ const routes = [
   {
     path: '/adminTransactions',
     name: 'AdminTransactions',
-    component: AdminTransactions
+    component: AdminTransactions,
+    meta: { requiresAuth: true }
   },
 
   {
     path: '/adminInvestments',
     name: 'AdminInvestments',
-    component: AdminInvestments
+    component: AdminInvestments,
+    meta: { requiresAuth: true }
   },
 
   {
   path: '/adminBudgets',
   name: 'AdminBudgets',
-  component: AdminBudgets
+  component: AdminBudgets,
+  meta: { requiresAuth: true }
   },
 
   {
   path: '/adminAnalytics',
   name: 'AdminAnalytics',
-  component: AdminAnalytics
+  component: AdminAnalytics,
+  meta: { requiresAuth: true }
   },
 
   {
   path: '/adminNotifications',
   name: 'AdminNotifications',
-  component: AdminNotifications
+  component: AdminNotifications,
+  meta: { requiresAuth: true }
   },
 
   {
   path: '/adminAuditLogs',
   name: 'AdminAudit',
-  component: AdminAuditLogs
+  component: AdminAuditLogs,
+  meta: { requiresAuth: true }
   }
 
 ]

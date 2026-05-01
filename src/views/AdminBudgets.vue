@@ -761,7 +761,7 @@ h1 {
   
   
   .sidebar nav {
-    flex: 1; /
+    flex: 1; 
     overflow-y: auto; 
     margin-bottom: 10px;
   }
@@ -1000,7 +1000,7 @@ h1 {
     overflow: hidden; 
     display: flex;
     flex-direction: column;
-    padding: 15px; /
+    padding: 15px; 
   }
 
   

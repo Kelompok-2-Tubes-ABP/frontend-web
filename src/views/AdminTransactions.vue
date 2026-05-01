@@ -15,6 +15,26 @@ import { ref, computed, watch } from "vue";
 const currentPage = ref(1);
 const perPage = 8;
 
+
+const handleLogout = async () => {
+  try {
+    const token = localStorage.getItem('token')
+
+    await axios.post('http://localhost:8080/admin/logout', {}, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+
+  } catch (err) {
+    console.error('Logout error:', err)
+  } finally {
+    // tetap hapus token walaupun request gagal
+    localStorage.removeItem('token')
+    window.location.href = '/'
+  }
+}
+
 // Data awal
 const transactions = ref([
   {    id: 'TRX001',    user: 'John Doe',    category: 'Investment',    amount: 5000,    status: 'Completed',    datetime: '2026-03-14 10:23:00'  },
@@ -121,7 +141,7 @@ const filteredTransactions = computed(() => {
                 Audit Logs
             </a>
         </nav>
-            <div class="logout">
+            <div class="logout" @click="handleLogout">
                 <img :src="iconLogout" class="icon-sidebar">
                 Logout
             </div>
@@ -340,14 +360,19 @@ const filteredTransactions = computed(() => {
 /* Main */
 .main {
   flex: 1;
-  padding: 20px 30px;
+  padding: 0 30px 20px 30px; 
+  overflow-y: auto;
 }
 
 /* Header */
 .header {
+  background-color: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 16px 30px;
   display: flex;
-  gap: 10px;   
-  margin-bottom: 20px;
+  gap: 20px;
+  align-items: center;
+  margin: 0 -30px 24px -30px; 
 }
 
 .header input {
