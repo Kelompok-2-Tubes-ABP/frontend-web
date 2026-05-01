@@ -77,6 +77,25 @@ const fetchDashboard = async () => {
   }
 }
 
+const handleLogout = async () => {
+  try {
+    const token = localStorage.getItem('token')
+
+    await axios.post('http://localhost:8080/admin/logout', {}, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+
+  } catch (err) {
+    console.error('Logout error:', err)
+  } finally {
+    // tetap hapus token walaupun request gagal
+    localStorage.removeItem('token')
+    window.location.href = '/'
+  }
+}
+
 // lifecycle
 onMounted(() => {
   fetchDashboard()
@@ -125,7 +144,7 @@ onMounted(() => {
                 Audit Logs
             </a>
         </nav>
-            <div class="logout">
+            <div class="logout" @click="handleLogout">
                 <img :src="iconLogout" class="icon-sidebar">
                 Logout
             </div>
@@ -343,14 +362,19 @@ onMounted(() => {
 /* Main */
 .main {
   flex: 1;
-  padding: 20px 30px;
+  padding: 0 30px 20px 30px; 
+  overflow-y: auto;
 }
 
 /* Header */
 .header {
+  background-color: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 16px 30px;
   display: flex;
-  gap: 10px;   
-  margin-bottom: 20px;
+  gap: 20px;
+  align-items: center;
+  margin: 0 -30px 24px -30px; 
 }
 
 .header input {
