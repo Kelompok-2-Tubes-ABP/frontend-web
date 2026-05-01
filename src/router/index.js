@@ -68,7 +68,7 @@ const routes = [
   },
 
   {
-  path: '/adminAuditLogs',
+  path: '/adminAudit',
   name: 'AdminAudit',
   component: AdminAuditLogs
   }

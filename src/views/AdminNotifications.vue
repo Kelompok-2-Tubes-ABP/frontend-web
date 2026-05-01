@@ -11,212 +11,336 @@ import iconAuditLogs from '@/assets/icon-audit-logs.svg';
 import iconLogout from '@/assets/icon-logout.svg';
 import iconHeader from '@/assets/icon-header.svg';
 import iconNotifications2 from '@/assets/icon-notifications2.svg';
-import iconBudgetActive from '@/assets/icon-budgetActive.svg';
-import iconBudgetAttention from '@/assets/icon-budgetsAttention.svg';
-import { ref, computed } from "vue";
+import { ref } from "vue";
 
-// Budget Tracking Data
-const budgets = ref([
-  { id: 1, user: "John Doe", category: "Groceries", period: "Monthly • 2026-03-01 to 2026-03-31", spent: 650, limit: 800, status: "Safe" },
-  { id: 2, user: "Jane Smith", category: "Entertainment", period: "Monthly • 2026-03-01 to 2026-03-31", spent: 520, limit: 500, status: "Over Budget" },
-  { id: 3, user: "Mike Johnson", category: "Transportation", period: "Monthly • 2026-03-01 to 2026-03-31", spent: 385, limit: 400, status: "Near Limit" },
-  { id: 4, user: "Sarah Wilson", category: "Healthcare", period: "Monthly • 2026-03-01 to 2026-03-31", spent: 450, limit: 1000, status: "Safe" },
-  { id: 5, user: "Tom Brown", category: "Shopping", period: "Monthly • 2026-03-01 to 2026-03-31", spent: 720, limit: 600, status: "Over Budget" },
-  { id: 6, user: "Emily Davis", category: "Dining", period: "Monthly • 2026-03-01 to 2026-03-31", spent: 280, limit: 450, status: "Safe" }
+// Responsive sidebar state
+const isSidebarOpen = ref(false);
+
+// Active tab
+const activeTab = ref('alerts');
+
+// Notifications Data
+const notifications = ref([
+  {
+    id: 1,
+    type: 'warning',
+    title: 'High Transaction Volume Detected',
+    description: 'Unusual activity detected for user #12453. Please review.',
+    timestamp: '2026-03-15 10:23 AM',
+    badges: ['Warning', 'New']
+  },
+  {
+    id: 2,
+    type: 'error',
+    title: 'Payment Gateway Error',
+    description: 'Multiple failed transactions reported. Gateway may be down.',
+    timestamp: '2026-03-15 09:15 AM',
+    badges: ['Error', 'New']
+  },
+  {
+    id: 3,
+    type: 'info',
+    title: 'System Maintenance Scheduled',
+    description: 'Scheduled maintenance on March 20, 2026 at 2:00 AM UTC.',
+    timestamp: '2026-03-14 04:30 PM',
+    badges: ['Info']
+  },
+  {
+    id: 4,
+    type: 'success',
+    title: 'Database Backup Completed',
+    description: 'Daily backup completed successfully. All data secured.',
+    timestamp: '2026-03-14 02:00 AM',
+    badges: ['Success']
+  },
+  {
+    id: 5,
+    type: 'warning',
+    title: 'Low Storage Warning',
+    description: 'Storage usage at 85%. Consider adding more capacity.',
+    timestamp: '2026-03-13 11:20 AM',
+    badges: ['Warning']
+  }
 ]);
 
-// Savings Goals Data
-const savingsGoals = ref([
-  { id: 1, user: "John Doe", goal: "Vacation Fund", targetDate: "2026-07-01", saved: 3200, target: 5000, status: "On track" },
-  { id: 2, user: "Jane Smith", goal: "Emergency Fund", targetDate: "2026-12-31", saved: 8500, target: 10000, status: "On track" },
-  { id: 3, user: "Sarah Wilson", goal: "New Car", targetDate: "2027-06-01", saved: 6200, target: 15000, status: "On track" },
-  { id: 4, user: "Tom Brown", goal: "Home Renovation", targetDate: "2026-10-15", saved: 12000, target: 20000, status: "On track" }
+// Failed Logs Data
+const failedLogs = ref([
+  {
+    id: 1,
+    action: 'Transaction Processing',
+    user: 'John Doe',
+    error: 'Gateway timeout after 30s',
+    timestamp: '2026-03-15 09:15 AM',
+    canRetry: true
+  },
+  {
+    id: 2,
+    action: 'User Authentication',
+    user: 'Jane Smith',
+    error: 'Invalid credentials attempted 3 times',
+    timestamp: '2026-03-15 08:42 AM',
+    canRetry: false
+  },
+  {
+    id: 3,
+    action: 'File Upload',
+    user: 'Mike Johnson',
+    error: 'File size exceeds limit (15MB)',
+    timestamp: '2026-03-14 03:20 PM',
+    canRetry: true
+  },
+  {
+    id: 4,
+    action: 'Payment Processing',
+    user: 'Sarah Wilson',
+    error: 'Insufficient funds',
+    timestamp: '2026-03-14 11:05 AM',
+    canRetry: false
+  },
+  {
+    id: 5,
+    action: 'API Request',
+    user: 'System',
+    error: 'Rate limit exceeded',
+    timestamp: '2026-03-13 06:30 PM',
+    canRetry: true
+  }
 ]);
 
 // Computed
-const totalBudgets = computed(() => budgets.value.length);
-const overBudget = computed(() => budgets.value.filter(b => b.status === "Over Budget").length);
-const savingsGoalsCount = computed(() => savingsGoals.value.length);
+const totalAlerts = ref(5);
+const failedActions = ref(5);
+const unreadCount = ref(2);
+const canRetryCount = ref(2);
 
-// Helpers
-const getPercentage = (spent, limit) => Math.min((spent / limit) * 100, 100);
-const getSavingsPercentage = (saved, target) => ((saved / target) * 100).toFixed(1);
-const getRemaining = (spent, limit) => limit - spent;
-const getToGo = (saved, target) => target - saved;
-
-const getStatusClass = (status) => {
-  if (status === "Safe") return "safe";
-  if (status === "Over Budget") return "over";
-  if (status === "Near Limit") return "near";
-  return "";
+// Toggle sidebar
+const toggleSidebar = () => {
+  isSidebarOpen.value = !isSidebarOpen.value;
 };
 
-const getProgressBarClass = (status) => {
-  if (status === "Safe") return "progress-safe";
-  if (status === "Over Budget") return "progress-over";
-  if (status === "Near Limit") return "progress-near";
-  return "";
+// Close sidebar when clicking outside on mobile
+const closeSidebarOnMobile = () => {
+  if (window.innerWidth < 1024) {
+    isSidebarOpen.value = false;
+  }
+};
+
+// Helper functions
+const getTypeIcon = (type) => {
+  const icons = {
+    warning: '⚠️',
+    error: '❌',
+    info: 'ℹ️',
+    success: '✅'
+  };
+  return icons[type] || 'ℹ️';
+};
+
+const getBadgeClass = (badge) => {
+  const classes = {
+    'Warning': 'badge-warning',
+    'Error': 'badge-error',
+    'Info': 'badge-info',
+    'Success': 'badge-success',
+    'New': 'badge-new'
+  };
+  return classes[badge] || '';
+};
+
+const retryAction = (id) => {
+  console.log('Retrying action:', id);
+  // Add retry logic here
 };
 </script>
 
 <template>
-  <div class="layout">
+  <div class="layout" :class="{ 'sidebar-open': isSidebarOpen }">
+    <!-- Sidebar Toggle Button -->
+    <button 
+      class="sidebar-toggle" 
+      @click="toggleSidebar"
+      :aria-label="isSidebarOpen ? 'Close sidebar' : 'Open sidebar'"
+      :class="{ 'active': isSidebarOpen }"
+    >
+      <svg v-if="!isSidebarOpen" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 18l6-6-6-6"/>
+      </svg>
+      <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M15 18l-6-6 6-6"/>
+      </svg>
+    </button>
+
+    <!-- Sidebar Overlay for Mobile -->
+    <div v-if="isSidebarOpen" class="sidebar-overlay" @click="closeSidebarOnMobile"></div>
+
     <!-- Sidebar -->
     <aside class="sidebar">
       <div class="brand">
-        <img :src="FintechLogo" class="logo">
+        <img :src="FintechLogo" class="logo" alt="Logo">
         <div class="titlelogo">FinTech</div>
       </div>
       <nav>
-        <a @click.prevent="$router.push('/adminDashboard')">
-          <img :src="iconDashboard" class="icon-sidebar">
+        <a @click.prevent="$router.push('/adminDashboard'); closeSidebarOnMobile()">
+          <img :src="iconDashboard" class="icon-sidebar" alt="">
           Dashboard
         </a>
-        <a @click.prevent="$router.push('/adminUsers')">
-          <img :src="iconUsers" class="icon-sidebar">
+        <a @click.prevent="$router.push('/adminUsers'); closeSidebarOnMobile()">
+          <img :src="iconUsers" class="icon-sidebar" alt="">
           Users
         </a>
-        <a @click.prevent="$router.push('/adminTransactions')">
-          <img :src="iconTransactions" class="icon-sidebar">
+        <a @click.prevent="$router.push('/adminTransactions'); closeSidebarOnMobile()">
+          <img :src="iconTransactions" class="icon-sidebar" alt="">
           Transactions
         </a>
-        <a @click.prevent="$router.push('/adminInvestments')">
-          <img :src="iconInvestments" class="icon-sidebar">
+        <a @click.prevent="$router.push('/adminInvestments'); closeSidebarOnMobile()">
+          <img :src="iconInvestments" class="icon-sidebar" alt="">
           Investments
         </a>
-        <a class="active">
-          <img :src="iconBudgets" class="icon-sidebar">
+        <a @click.prevent="$router.push('/adminBudgets'); closeSidebarOnMobile()">
+          <img :src="iconBudgets" class="icon-sidebar" alt="">
           Budgets
         </a>
-        <a @click.prevent="$router.push('/adminAnalytics')">
-          <img :src="iconAnalytics" class="icon-sidebar">
+        <a @click.prevent="$router.push('/adminAnalytics'); closeSidebarOnMobile()">
+          <img :src="iconAnalytics" class="icon-sidebar" alt="">
           Analytics
         </a>
-        <a @click.prevent="$router.push('/adminNotifications')">
-          <img :src="iconNotifications" class="icon-sidebar">
+        <a class="active">
+          <img :src="iconNotifications" class="icon-sidebar" alt="">
           Notifications
         </a>
-        <a @click.prevent="$router.push('/adminAuditLogs')">
-          <img :src="iconAuditLogs" class="icon-sidebar">
+        <a @click.prevent="$router.push('/adminAudit'); closeSidebarOnMobile()">
+          <img :src="iconAuditLogs" class="icon-sidebar" alt="">
           Audit Logs
         </a>
       </nav>
-      <div class="logout">
-        <img :src="iconLogout" class="icon-sidebar">
+      <div class="logout" @click="closeSidebarOnMobile()">
+        <img :src="iconLogout" class="icon-sidebar" alt="">
         Logout
       </div>
     </aside>
 
-    <!-- Main -->
+    <!-- Main Content -->
     <main class="main">
       <!-- Header -->
       <div class="header">
-        <img :src="iconHeader" class="icon-header">
+        <img :src="iconHeader" class="icon-header" alt="">
         <input type="text" placeholder="Search users, transactions..." />
         <div class="user">
           <span class="role-badge">Superadmin</span>
-          <img :src="iconNotifications2" class="icon-header">
+          <img :src="iconNotifications2" class="icon-header" alt="">
           <div class="avatar">AD</div>
           <div class="username">Admin User</div>
         </div>
       </div>
 
-      <!-- Title -->
-      <h1>Budget & Savings</h1>
-      <p class="subtitle">Monitor user budgets and savings goals</p>
+      <!-- Page Title -->
+      <h1>Notifications & Logs</h1>
+      <p class="subtitle">System alerts and failed action logs</p>
 
       <!-- Summary Cards -->
       <div class="summary-cards">
         <div class="stat-card">
-          <p class="stat-label">Total Budgets</p>
-          <h2 class="stat-number">{{ totalBudgets }}</h2>
-          <div class="stat-footer">
-            <img :src="iconBudgetActive" class="stat-icon active">
-            <span class="stat-subtitle active">Active this month</span>
+          <div class="stat-icon-wrapper">
+            <span class="stat-icon-alert">🔔</span>
+          </div>
+          <div class="stat-content">
+            <p class="stat-label">Total Alerts</p>
+            <h2 class="stat-number">{{ totalAlerts }}</h2>
           </div>
         </div>
         <div class="stat-card">
-          <p class="stat-label">Over Budget</p>
-          <h2 class="stat-number text-over">{{ overBudget }}</h2>
-          <div class="stat-footer">
-            <img :src="iconBudgetAttention" class="stat-icon attention">
-            <span class="stat-subtitle over">Needs attention</span>
+          <div class="stat-icon-wrapper">
+            <span class="stat-icon-error">❌</span>
+          </div>
+          <div class="stat-content">
+            <p class="stat-label">Failed Actions</p>
+            <h2 class="stat-number text-error">{{ failedActions }}</h2>
           </div>
         </div>
         <div class="stat-card">
-          <p class="stat-label">Savings Goals</p>
-          <h2 class="stat-number">{{ savingsGoalsCount }}</h2>
-          <div class="stat-footer">
-            <img :src="iconBudgetActive" class="stat-icon active">
-            <span class="stat-subtitle active">In progress</span>
+          <div class="stat-icon-wrapper">
+            <span class="stat-icon-unread">📩</span>
+          </div>
+          <div class="stat-content">
+            <p class="stat-label">Unread</p>
+            <h2 class="stat-number text-warning">{{ unreadCount }}</h2>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon-wrapper">
+            <span class="stat-icon-retry">🔄</span>
+          </div>
+          <div class="stat-content">
+            <p class="stat-label">Can Retry</p>
+            <h2 class="stat-number text-success">{{ canRetryCount }}</h2>
           </div>
         </div>
       </div>
 
-      <!-- Budget Tracking Section -->
-      <div class="section-card">
-        <h2 class="section-title">Budget Tracking</h2>
-        <div class="budget-list">
-          <div v-for="budget in budgets" :key="budget.id" class="budget-item">
-            <div class="budget-header">
-              <div class="budget-info">
-                <div class="user-with-badge">
-                  <span class="budget-user">{{ budget.user }}</span>
-                  <span class="category-badge">{{ budget.category }}</span>
+      <!-- Tabs -->
+      <div class="tabs-container">
+        <button 
+          :class="['tab', { active: activeTab === 'alerts' }]"
+          @click="activeTab = 'alerts'"
+        >
+          System Alerts
+        </button>
+        <button 
+          :class="['tab', { active: activeTab === 'logs' }]"
+          @click="activeTab = 'logs'"
+        >
+          Failed Logs
+        </button>
+      </div>
+
+      <!-- System Alerts Section -->
+      <div v-if="activeTab === 'alerts'" class="section-card">
+        <h2 class="section-title">System Alerts</h2>
+        <div class="alerts-list">
+          <div v-for="alert in notifications" :key="alert.id" class="alert-item">
+            <div class="alert-icon">
+              <span>{{ getTypeIcon(alert.type) }}</span>
+            </div>
+            <div class="alert-content">
+              <div class="alert-header">
+                <h3 class="alert-title">{{ alert.title }}</h3>
+                <div class="alert-badges">
+                  <span 
+                    v-for="badge in alert.badges" 
+                    :key="badge"
+                    :class="['badge', getBadgeClass(badge)]"
+                  >
+                    {{ badge }}
+                  </span>
                 </div>
-                <span class="budget-period">{{ budget.period }}</span>
               </div>
-              <div class="budget-amounts">
-                <span class="budget-total">${{ budget.spent }} / ${{ budget.limit }}</span>
-                <span :class="['status-badge', getStatusClass(budget.status)]">{{ budget.status }}</span>
-              </div>
-            </div>
-            <div class="progress-container">
-              <div class="progress-bar">
-                <div 
-                  :class="['progress-fill', getProgressBarClass(budget.status)]" 
-                  :style="{ width: getPercentage(budget.spent, budget.limit) + '%' }"
-                ></div>
-              </div>
-              <div class="progress-details">
-                <span class="percentage">{{ getPercentage(budget.spent, budget.limit).toFixed(1) }}% used</span>
-                <span class="remaining" :class="{ negative: getRemaining(budget.spent, budget.limit) < 0 }">
-                  ${{ Math.abs(getRemaining(budget.spent, budget.limit)) }} 
-                  {{ getRemaining(budget.spent, budget.limit) < 0 ? 'over' : 'remaining' }}
-                </span>
-              </div>
+              <p class="alert-description">{{ alert.description }}</p>
+              <span class="alert-time">{{ alert.timestamp }}</span>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Savings Goals Section -->
-      <div class="section-card">
-        <h2 class="section-title">Savings Goals Progress</h2>
-        <div class="savings-list">
-          <div v-for="goal in savingsGoals" :key="goal.id" class="savings-item">
-            <div class="savings-header">
-              <div class="savings-info">
-                <span class="savings-user">{{ goal.user }}</span>
-                <span class="savings-goal">{{ goal.goal }}</span>
-                <span class="savings-date">Target: {{ goal.targetDate }}</span>
+      <!-- Failed Logs Section -->
+      <div v-if="activeTab === 'logs'" class="section-card">
+        <h2 class="section-title">Failed Action Logs</h2>
+        <div class="logs-list">
+          <div v-for="log in failedLogs" :key="log.id" class="log-item">
+            <div class="log-content">
+              <div class="log-header">
+                <h3 class="log-title">{{ log.action }}</h3>
+                <span v-if="log.canRetry" class="retry-badge">Can Retry</span>
               </div>
-              <div class="savings-amounts">
-                <span class="savings-total">${{ goal.saved }} / ${{ goal.target }}</span>
-                <span class="savings-percent">{{ getSavingsPercentage(goal.saved, goal.target) }}% complete</span>
+              <div class="log-details">
+                <span class="log-user">User: {{ log.user }}</span>
+                <span class="log-error">{{ log.error }}</span>
               </div>
+              <span class="log-time">{{ log.timestamp }}</span>
             </div>
-            <div class="progress-container">
-              <div class="progress-bar">
-                <div 
-                  class="progress-fill progress-savings" 
-                  :style="{ width: getSavingsPercentage(goal.saved, goal.target) + '%' }"
-                ></div>
-              </div>
-              <div class="progress-details">
-                <span class="percentage on-track">↗ On track</span>
-                <span class="to-go">${{ getToGo(goal.saved, goal.target) }} to go</span>
-              </div>
+            <div class="log-actions" v-if="log.canRetry">
+              <button class="retry-btn" @click="retryAction(log.id)">
+                Retry
+              </button>
             </div>
           </div>
         </div>
@@ -231,8 +355,10 @@ const getProgressBarClass = (status) => {
   height: 100vh;
   font-family: 'Inter', sans-serif;
   background: #f5f7fb;
+  position: relative;
 }
 
+/* Sidebar Styles */
 .sidebar {
   width: 250px;
   background: #1e3a8a;
@@ -240,6 +366,7 @@ const getProgressBarClass = (status) => {
   display: flex;
   flex-direction: column;
   padding: 20px;
+  flex-shrink: 0;
 }
 
 .brand {
@@ -302,6 +429,7 @@ const getProgressBarClass = (status) => {
   font-size: 20px;
 }
 
+/* Main Content */
 .main {
   flex: 1;
   padding: 0 30px 20px 30px; 
@@ -320,7 +448,7 @@ const getProgressBarClass = (status) => {
 
 .header input {
   width: 300px;
-  font-size: 24px;
+  font-size: 14px;
   padding: 10px;
   border-radius: 8px;
   border: 1px solid #ddd;
@@ -335,9 +463,9 @@ const getProgressBarClass = (status) => {
 }
 
 .icon-header {
-  width: 30px;
-  height: 30px;
-  padding: 10px;
+  width: 24px;
+  height: 24px;
+  padding: 8px;
   cursor: pointer;
 }
 
@@ -346,12 +474,13 @@ const getProgressBarClass = (status) => {
   color: #3730a3;
   padding: 5px 10px;
   border-radius: 8px;
-  font-size: 20px;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .avatar {
-  width: 45px;
-  height: 45px;
+  width: 40px;
+  height: 40px;
   background: #2563eb;
   color: white;
   display: flex;
@@ -359,35 +488,36 @@ const getProgressBarClass = (status) => {
   justify-content: center;
   border-radius: 50%;
   font-weight: bold;
-  font-size: 20px;
+  font-size: 14px;
 }
 
 .username {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 20px;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 h1 {
-  font-size: 36px;
+  font-size: 28px;
   margin: 0 0 8px 0;
   font-weight: 700;
   color: #111827;
-  letter-spacing: -0.5px;
 }
 
 .subtitle {
   color: #6b7280;
   margin: 0 0 30px 0;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 400;
 }
 
+/* Summary Cards */
 .summary-cards {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 15px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
   margin-bottom: 25px;
 }
 
@@ -396,58 +526,98 @@ h1 {
   padding: 24px;
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.stat-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 24px;
+}
+
+.stat-icon-alert {
+  background: #dbeafe;
+}
+
+.stat-icon-error {
+  background: #fee2e2;
+}
+
+.stat-icon-unread {
+  background: #fef3c7;
+}
+
+.stat-icon-retry {
+  background: #d1fae5;
+}
+
+.stat-content {
+  flex: 1;
 }
 
 .stat-label {
   margin: 0;
   color: #6b7280;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
 }
 
 .stat-number {
-  margin: 8px 0;
-  font-size: 40px;
+  margin: 4px 0 0 0;
+  font-size: 28px;
   font-weight: 700;
   color: #111827;
   line-height: 1;
 }
 
-.stat-footer {
+.text-error {
+  color: #ef4444;
+}
+
+.text-warning {
+  color: #f59e0b;
+}
+
+.text-success {
+  color: #10b981;
+}
+
+/* Tabs */
+.tabs-container {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 8px;
+  gap: 8px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0;
 }
 
-.stat-icon {
-  width: 14px;
-  height: 14px;
-}
-
-.stat-icon.active {
-  color: #10b981;
-}
-
-.stat-icon.attention {
-  color: #ef4444;
-}
-
-.stat-subtitle {
-  font-size: 13px;
+.tab {
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  font-size: 14px;
   font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.2s;
 }
 
-.stat-subtitle.active {
-  color: #10b981;
+.tab:hover {
+  color: #1e3a8a;
 }
 
-.stat-subtitle.over {
-  color: #ef4444;
-}
-
-.text-over {
-  color: #ef4444;
+.tab.active {
+  color: #1e3a8a;
+  border-bottom-color: #1e3a8a;
+  font-weight: 600;
 }
 
 /* Section Card */
@@ -460,186 +630,390 @@ h1 {
 }
 
 .section-title {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
-  margin: 0 0 24px 0;
+  margin: 0 0 20px 0;
   color: #111827;
-  letter-spacing: -0.3px;
 }
 
-.budget-list, .savings-list {
+/* Alerts List */
+.alerts-list {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
 }
 
-.budget-item, .savings-item {
-  padding-bottom: 24px;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.budget-item:last-child, .savings-item:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.budget-header, .savings-header {
+.alert-item {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 12px;
-  gap: 15px;
+  gap: 16px;
+  padding: 20px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border-left: 4px solid #e2e8f0;
+  transition: all 0.2s;
 }
 
-.budget-info, .savings-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1;
+.alert-item:hover {
+  background: #f1f5f9;
+  transform: translateX(4px);
 }
 
-.user-with-badge {
+.alert-item:nth-child(1) {
+  border-left-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.alert-item:nth-child(2) {
+  border-left-color: #ef4444;
+  background: #fef2f2;
+}
+
+.alert-item:nth-child(3) {
+  border-left-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.alert-item:nth-child(4) {
+  border-left-color: #10b981;
+  background: #ecfdf5;
+}
+
+.alert-icon {
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.budget-user, .savings-user {
-  font-weight: 700;
-  font-size: 16px;
-  color: #111827;
-}
-
-.category-badge {
-  background: #f3f4f6;
-  color: #4b5563;
-  padding: 3px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.budget-category, .savings-goal {
-  font-size: 14px;
-  color: #6b7280;
-}
-
-.budget-period, .savings-date {
-  font-size: 13px;
-  color: #9ca3af;
-}
-
-.budget-amounts, .savings-amounts {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
+  justify-content: center;
+  font-size: 20px;
   flex-shrink: 0;
 }
 
-.budget-total, .savings-total {
-  font-weight: 700;
-  font-size: 16px;
-  color: #111827;
+.alert-content {
+  flex: 1;
 }
 
-.savings-percent {
+.alert-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.alert-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.alert-badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badge-warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badge-error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.badge-info {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.badge-success {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.badge-new {
+  background: #2563eb;
+  color: white;
+}
+
+.alert-description {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0 0 8px 0;
+  line-height: 1.5;
+}
+
+.alert-time {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* Logs List */
+.logs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.log-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 20px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s;
+}
+
+.log-item:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.log-content {
+  flex: 1;
+}
+
+.log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.log-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.retry-badge {
+  padding: 3px 10px;
+  background: #d1fae5;
+  color: #065f46;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.log-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.log-user {
   font-size: 13px;
   color: #6b7280;
 }
 
-/* Status Badge */
-.status-badge {
-  padding: 4px 12px;
-  border-radius: 6px;
-  font-size: 12px;
+.log-error {
+  font-size: 13px;
+  color: #ef4444;
   font-weight: 500;
 }
 
-.status-badge.safe { 
-  background: #dcfce7; 
-  color: #10b981; 
+.log-time {
+  font-size: 12px;
+  color: #9ca3af;
 }
 
-.status-badge.over { 
-  background: #fee2e2; 
-  color: #ef4444; 
+.log-actions {
+  flex-shrink: 0;
 }
 
-.status-badge.near { 
-  background: #fef9c3; 
-  color: #f59e0b; 
-}
-
-/* Progress Bar */
-.progress-container { 
-  margin-top: 12px; 
-}
-
-.progress-bar {
-  width: 100%;
-  height: 6px;
-  background: #e5e7eb;
-  border-radius: 3px;
-  overflow: hidden;
-  margin-bottom: 8px;
-}
-
-.progress-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.3s ease;
-}
-
-.progress-fill.progress-safe { background: #10b981; }
-.progress-fill.progress-over { background: #ef4444; }
-.progress-fill.progress-near { background: #f59e0b; }
-.progress-fill.progress-savings { background: #2563eb; }
-
-.progress-details {
-  display: flex;
-  justify-content: space-between;
+.retry-btn {
+  padding: 8px 16px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
   font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.percentage { 
-  color: #6b7280; 
+.retry-btn:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
 }
 
-.percentage.on-track { 
-  color: #10b981; 
+/* Sidebar Toggle */
+.sidebar-toggle {
+  display: none; 
+  position: fixed;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1001;
+  background: #1e3a8a;
+  color: white;
+  border: none;
+  border-radius: 0 8px 8px 0;
+  padding: 12px 8px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  width: 36px;
+  height: 48px;
 }
 
-.remaining, .to-go { 
-  color: #6b7280; 
+.sidebar-toggle:hover {
+  background: #3b82f6;
+  transform: translateY(-50%) translateX(2px);
 }
 
-.remaining.negative { 
-  color: #ef4444; 
-  font-weight: 500; 
+.sidebar-toggle.active {
+  left: 250px;
+  border-radius: 8px 0 0 8px;
+}
+
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 999;
 }
 
 /* Responsive */
 @media (max-width: 1024px) {
-  .summary-cards { grid-template-columns: repeat(2, 1fr); }
+  .sidebar-toggle {
+    display: flex;
+  }
+  
+  .layout.sidebar-open .sidebar-overlay {
+    display: block;
+  }
+  
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    max-height: 100vh;
+    width: 260px;
+    z-index: 1000;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    overflow: hidden;
+    padding: 12px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .layout.sidebar-open .sidebar {
+    transform: translateX(0);
+  }
+  
+  .brand {
+    margin-bottom: 20px;
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+  
+  .logo {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .titlelogo {
+    font-size: 18px;
+  }
+  
+  .sidebar nav {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 10px;
+  }
+  
+  .sidebar nav a {
+    padding: 10px 12px;
+    margin-bottom: 4px;
+    font-size: 14px;
+  }
+  
+  .icon-sidebar {
+    width: 22px;
+    height: 22px;
+  }
+  
+  .logout {
+    margin-top: auto;
+    font-size: 14px;
+    padding: 10px 12px;
+    flex-shrink: 0;
+  }
+  
+  .main {
+    width: 100%;
+    padding: 0 15px 20px 15px;
+  }
+  
+  .header {
+    margin: 0 -15px 24px -15px;
+    padding: 16px 15px;
+  }
+  
+  .header input {
+    width: 200px;
+    font-size: 14px;
+  }
+  
+  .summary-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  h1 {
+    font-size: 24px;
+  }
 }
 
-@media (max-width: 768px) {
-  .summary-cards { grid-template-columns: 1fr; }
-  .header { flex-wrap: wrap; }
-  .header input { width: 100%; margin-top: 10px; }
-  h1 { font-size: 28px; }
-  .subtitle { font-size: 14px; }
-}
-
-@media (max-width: 480px) {
-  .main { padding: 15px; }
-  h1 { font-size: 24px; }
-  .subtitle { font-size: 14px; }
-  .section-card { padding: 20px; }
-  .budget-header, .savings-header { flex-direction: column; }
-  .budget-amounts, .savings-amounts { align-items: flex-start; }
-  .user-with-badge { flex-direction: column; align-items: flex-start; }
+@media (max-width: 640px) {
+  .summary-cards {
+    grid-template-columns: 1fr;
+  }
+  
+  .stat-card {
+    padding: 16px;
+  }
+  
+  .alert-item, .log-item {
+    flex-direction: column;
+  }
+  
+  .alert-header {
+    flex-direction: column;
+  }
+  
+  .log-actions {
+    width: 100%;
+  }
+  
+  .retry-btn {
+    width: 100%;
+  }
 }
 </style>

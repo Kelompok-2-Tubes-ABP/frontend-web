@@ -761,7 +761,7 @@ h1 {
   
   
   .sidebar nav {
-    flex: 1; /
+    flex: 1; 
     overflow-y: auto; 
     margin-bottom: 10px;
   }
@@ -775,7 +775,7 @@ h1 {
     margin-bottom: 4px; 
     cursor: pointer;
     opacity: 0.9;
-    font-size: 14px; /* Smaller font */
+    font-size: 14px; 
     text-decoration: none;
     color: white;
     white-space: nowrap;
@@ -1000,12 +1000,12 @@ h1 {
     overflow: hidden; 
     display: flex;
     flex-direction: column;
-    padding: 15px; /
+    padding: 15px; 
   }
 
   
   .brand {
-    margin-bottom: 15px !important; 
+    margin-bottom: 15px;
     margin-top: 5px;
   }
 
