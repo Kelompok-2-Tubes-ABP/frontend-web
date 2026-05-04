@@ -11,11 +11,95 @@ import iconAuditLogs from '@/assets/icon-audit-logs.svg';
 import iconLogout from '@/assets/icon-logout.svg';
 import iconHeader from '@/assets/icon-header.svg';
 import iconNotifications2 from '@/assets/icon-notifications2.svg';
+import iconTotalUsers from '@/assets/icon-totaluser.svg';
+import iconTotalTransactions from '@/assets/icon-totaltransactions.svg';
+import iconTotalRevenue from '@/assets/icon-totalrevenue.svg';
+import iconActiveSessions from '@/assets/icon-activesessions.svg';
 import LineChart from '@/components/LineChart.vue'
 import PieChart from '@/components/PieChart.vue'
-import { ref } from 'vue'
-import router from '@/router';
-const activeRange = ref('daily') 
+import { ref,onMounted } from 'vue'
+import axios from 'axios'
+const activeRange = ref('daily')
+
+// state utama
+const stats = ref({
+  totalUsers: 0,
+  totalTransactions: 0,
+  totalRevenue: 0,
+  activeSessions: 0
+})
+
+const chartData = ref({
+  daily: [],
+  monthly: []
+})
+
+const topCategories = ref([])
+const activities = ref([])
+
+// fetch function
+const fetchDashboard = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    const res = await axios.get('http://localhost:8080/admin/dashboard', {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+
+    console.log('RESPONSE:', res.data)
+
+    const data = res.data.data
+
+    stats.value = {
+      totalUsers: data.quick_stats.total_users?.value || 0,
+      totalTransactions: data.quick_stats.total_transactions?.value || 0,
+      totalRevenue: data.quick_stats.total_revenue?.value || 0,
+      activeSessions: data.quick_stats.active_sessions?.value || 0
+    }
+
+    chartData.value = data.chart_data || {
+      daily: { revenue: [], transactions: [] },
+      monthly: { revenue: [], transactions: [] }
+    }
+    topCategories.value = data.top_categories.map(item => ({
+      name: item._id,
+      value: Math.round(item.percentage)
+    }))
+    activities.value = activities.value = data.recent_activities || []
+
+  } catch (err) {
+    console.error('Error fetch dashboard:', err)
+    if (err.response?.status === 401) {
+      localStorage.removeItem('token')
+      window.location.href = '/'
+    }
+  }
+}
+
+const handleLogout = async () => {
+  try {
+    const token = localStorage.getItem('token')
+
+    await axios.post('http://localhost:8080/admin/logout', {}, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+
+  } catch (err) {
+    console.error('Logout error:', err)
+  } finally {
+    // tetap hapus token walaupun request gagal
+    localStorage.removeItem('token')
+    window.location.href = '/'
+  }
+}
+
+// lifecycle
+onMounted(() => {
+  fetchDashboard()
+})
 </script>
 
 <template>
@@ -43,7 +127,7 @@ const activeRange = ref('daily')
                 <img :src="iconInvestments" class="icon-sidebar">
                 Investments
             </a>
-            <a>
+            <a @click.prevent="$router.push('/adminBudgets')">
                 <img :src="iconBudgets" class="icon-sidebar">
                 Budgets
             </a>
@@ -60,7 +144,7 @@ const activeRange = ref('daily')
                 Audit Logs
             </a>
         </nav>
-            <div class="logout">
+            <div class="logout" @click="handleLogout">
                 <img :src="iconLogout" class="icon-sidebar">
                 Logout
             </div>
@@ -88,20 +172,32 @@ const activeRange = ref('daily')
       <!-- Cards -->
       <div class="cards">
         <div class="card">
-          <p>Total Users</p>
-          <h2>12,453</h2>
+          <div class="icon-card">
+            <p style="padding-right:70px">Total Users</p>
+            <img :src="iconTotalUsers" class="icon-stats">
+          </div>
+          <h2>{{ stats.totalUsers }}</h2>
         </div>
         <div class="card">
-          <p>Total Transactions</p>
-          <h2>8,234</h2>
+          <div class="icon-card">
+            <p>Total Transactions</p>
+            <img :src="iconTotalTransactions" class="icon-stats">
+          </div>
+          <h2>{{ stats.totalTransactions }}</h2>
         </div>
         <div class="card">
-          <p>Total Revenue</p>
-          <h2>$175,340</h2>
+          <div class="icon-card">
+             <p style="padding-right:45px;">Total Revenue</p>
+             <img :src="iconTotalRevenue" class="icon-stats">
+          </div>
+          <h2>${{ (stats.totalRevenue || 0).toLocaleString() }}</h2>
         </div>
         <div class="card">
-          <p>Active Sessions</p>
-          <h2>2,847</h2>
+          <div class="icon-card">
+            <p style="padding-right: 30px;">Active Sessions</p>
+            <img :src="iconActiveSessions" class="icon-stats">
+          </div>
+          <h2>{{ stats.activeSessions }}</h2>
         </div>
       </div>
 
@@ -128,7 +224,10 @@ const activeRange = ref('daily')
           </button>
         </div>
         <div class="chart-content">
-          <LineChart :range="activeRange" />
+          <LineChart 
+            :range="activeRange" 
+            :data="chartData[activeRange] || {}"
+          />
         </div>
         </div>
 
@@ -137,40 +236,28 @@ const activeRange = ref('daily')
             Top Categories
           </h4>
           <div class="chart-content">
-            <PieChart />
+            <PieChart :data="topCategories" />
           </div>
 
           <div class="legend-pie">
-            <div class="legend-item">
+            <div 
+              class="legend-item"
+              v-for="cat in topCategories"
+              :key="cat.name"
+            >
               <div class="left">
-                <span class="dot blue"></span>
-                <span>Investments</span>
+                <span 
+                  class="dot"
+                  :class="{
+                    blue: cat.name === 'Investments',
+                    green: cat.name === 'Transfers',
+                    yellow: cat.name === 'Bills',
+                    red: cat.name === 'Shopping'
+                  }"
+                ></span>
+                <span>{{ cat.name }}</span>
               </div>
-              <b>35%</b>
-            </div>
-
-            <div class="legend-item">
-              <div class="left">
-                <span class="dot green"></span>
-                <span>Transfers</span>
-              </div>
-              <b>28%</b>
-            </div>
-
-            <div class="legend-item">
-              <div class="left">
-                <span class="dot yellow"></span>
-                <span>Bills</span>
-              </div>
-              <b>22%</b>
-            </div>
-
-            <div class="legend-item">
-              <div class="left">
-                <span class="dot red"></span>
-                <span>Shopping</span>
-              </div>
-              <b>15%</b>
+              <b>{{ cat.value }}%</b>
             </div>
           </div>
         </div>
@@ -180,17 +267,13 @@ const activeRange = ref('daily')
       <!-- Activity -->
       <div class="activity">
         <h3>Recent Activities</h3>
-        <div class="item">
-          <span>John Doe - New investment</span>
-          <b>$5,000</b>
-        </div>
-        <div class="item">
-          <span>Jane Smith - Withdrawal</span>
-          <b>$2,500</b>
-        </div>
-        <div class="item">
-          <span>Mike Johnson - Account created</span>
-          <b>-</b>
+        <div 
+          class="item"
+          v-for="item in activities"
+          :key="item.name"
+        >
+          <span>{{ item.name }} - {{ item.action }}</span>
+           <b>{{ item.amount ? `$${item.amount}` : '-' }}</b>
         </div>
       </div>
     </main>
@@ -279,14 +362,19 @@ const activeRange = ref('daily')
 /* Main */
 .main {
   flex: 1;
-  padding: 20px 30px;
+  padding: 0 30px 20px 30px; 
+  overflow-y: auto;
 }
 
 /* Header */
 .header {
+  background-color: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 16px 30px;
   display: flex;
-  gap: 10px;   
-  margin-bottom: 20px;
+  gap: 20px;
+  align-items: center;
+  margin: 0 -30px 24px -30px; 
 }
 
 .header input {
@@ -367,12 +455,25 @@ h1 {
   padding: 15px;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  font-size: 20px;
 }
 
 .card h2 {
   margin-top: 10px;
 }
 
+.icon-card{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 60%;
+}
+
+.icon-stats {
+  width: 30px;
+  height: 30px;
+  margin-top: 5px;
+}
 /* Charts */
 .charts {
   display: grid;

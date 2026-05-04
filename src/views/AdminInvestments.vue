@@ -11,48 +11,119 @@ import iconAuditLogs from '@/assets/icon-audit-logs.svg';
 import iconLogout from '@/assets/icon-logout.svg';
 import iconHeader from '@/assets/icon-header.svg';
 import iconNotifications2 from '@/assets/icon-notifications2.svg';
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
+import axios from 'axios';
 const currentPage = ref(1);
 const perPage = 10;
 const search = ref("");
 const status = ref("");
-const data = ref([
-  {id: "INV001", user: "John Doe", asset: "Apple Inc (AAPL)", invested: 15000, current: 16500, change: 10, status: "Active", date: "2026-01-15",},
-  {id: "INV002", user: "Jane Smith", asset: "Bitcoin (BTC)", invested: 25000, current: 27800, change: 11.2, status: "Active", date: "2026-02-20",},
-  {id: "INV003", user: "Mike Johnson", asset: "Tesla Inc (TSLA)", invested: 12000, current: 11200, change: -6.7, status: "Active", date: "2026-01-08",},
-  {id: "INV004", user: "Sarah Wilson", asset: "S&P 500 ETF", invested: 30000, current: 32400, change: 8, status: "Active", date: "2026-03-12",},
-  {id: "INV005", user: "Tom Brown", asset: "Ethereum (ETH)", invested: 8000, current: 7200, change: -10, status: "Closed", date: "2026-02-05",},
-  {id: "INV006", user: "Emily Davis", asset: "Amazon (AMZN)", invested: 20000, current: 22600, change: 13, status: "Active", date: "2026-01-28",},
-]);
+const investments = ref([])
+const stats = ref({
+  totalInvested: 0,
+  currentValue: 0,
+  gainLoss: 0,
+  performance: 0
+})
 
-const totalPages = computed(() => {
-  return Math.ceil(filteredData.value.length / perPage);
-});
+const fetchInvestments = async () => {
+  try {
+    const token = localStorage.getItem('token')
 
-const paginatedUsers = computed(() => {
-  const start = (currentPage.value - 1) * perPage;
-  const end = start + perPage;
-  return filteredData.value.slice(start, end);
-});
+    const res = await axios.get('http://localhost:8080/admin/investments', {
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      params: {
+        search: search.value,
+        status: status.value
+      }
+    })
 
-const filteredData = computed(() => {
-  return data.value.filter(u => {
-    const s = search.value.toLowerCase(); 
+    console.log('INVESTMENTS:', res.data.data)
 
-    const matchSearch =
-      u.user.toLowerCase().includes(s) ||
-      u.asset.toLowerCase().includes(s);
+    const list = res.data.data || []
 
-    const matchStatus =
-      !status.value || u.status === status.value;
+    investments.value = list.map(i => ({
+      id: i.id,
+      user: i.user_name || '-', // karena kosong
+      asset: `${i.asset_name} (${i.asset_symbol})`,
+      invested: i.invested, // ✅ FIX
+      current: i.current_value,
+      change: i.change_percent,
+      status: i.status,
+      date: i.date
+    }))
 
-    return matchSearch && matchStatus;
-  });
-});
+  } catch (err) {
+    console.error('Error fetch investments:', err)
+  }
+}
+
+const fetchStats = async () => {
+  try {
+    const token = localStorage.getItem('token')
+
+    const res = await axios.get('http://localhost:8080/admin/investments/stats', {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+
+    console.log('STATS:', res.data)
+
+    const s = res.data.data
+
+    stats.value = {
+      totalInvested: s.total_invested,
+      currentValue: s.current_value,
+      gainLoss: s.total_gain_loss, // ✅ FIX
+      performance: s.performance
+    }
+
+  } catch (err) {
+    console.error('Error fetch stats:', err)
+  }
+}
+
+const handleLogout = async () => {
+  try {
+    const token = localStorage.getItem('token')
+
+    await axios.post('http://localhost:8080/admin/logout', {}, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+
+  } catch (err) {
+    console.error('Logout error:', err)
+  } finally {
+    // tetap hapus token walaupun request gagal
+    localStorage.removeItem('token')
+    window.location.href = '/'
+  }
+}
+
+
+onMounted(() => {
+  fetchInvestments()
+  fetchStats()
+})
 
 watch([search, status], () => {
+  fetchInvestments()
   currentPage.value = 1;
+})
+
+const totalPages = computed(() => {
+  return Math.ceil(investments.value.length / perPage);
 });
+
+const paginatedInvestments = computed(() => {
+  const start = (currentPage.value - 1) * perPage
+  const end = start + perPage
+  return investments.value.slice(start, end)
+})
 </script>
 
 <template>
@@ -80,7 +151,7 @@ watch([search, status], () => {
                 <img :src="iconInvestments" class="icon-sidebar">
                 Investments
             </a>
-            <a>
+            <a @click.prevent="$router.push('/adminBudgets')">
                 <img :src="iconBudgets" class="icon-sidebar">
                 Budgets
             </a>
@@ -97,7 +168,7 @@ watch([search, status], () => {
                 Audit Logs
             </a>
         </nav>
-            <div class="logout">
+            <div class="logout" @click="handleLogout">
                 <img :src="iconLogout" class="icon-sidebar">
                 Logout
             </div>
@@ -126,19 +197,19 @@ watch([search, status], () => {
         <div class="cards">
           <div class="card">
             <p>Total Invested</p>
-            <h2>$110,000</h2>
+            <h2>${{ stats.totalInvested }}</h2>
           </div>
           <div class="card">
             <p>Current Value</p>
-            <h2>$117,700</h2>
+            <h2>${{ stats.currentValue }}</h2>
           </div>
           <div class="card">
             <p>Total Gain/Loss</p>
-            <h2 style="color:green">$7,700</h2>
+            <h2 style="color:green">${{ stats.gainLoss }}</h2>
           </div>
           <div class="card">
             <p>Performance</p>
-            <h2 style="color:green">7.00%</h2>
+            <h2 style="color:green">${{ stats.performance.toFixed(2) }}</h2>
           </div>
       </div>
 
@@ -178,7 +249,7 @@ watch([search, status], () => {
             </thead>
 
             <tbody>
-                <tr v-for="u in paginatedUsers" :key="u.id">
+                <tr v-for="u in paginatedInvestments" :key="u.id">
                 <td>#{{ u.id }}</td>
                 <td>{{ u.user }}</td>
                 <td>{{ u.asset }}</td>
@@ -203,9 +274,9 @@ watch([search, status], () => {
             Showing 
             {{ (currentPage - 1) * perPage + 1 }} 
             to 
-            {{ Math.min(currentPage * perPage, filteredData.length) }} 
+            {{ Math.min(currentPage * perPage, investments.length) }} 
             of 
-            {{ filteredData.length }} Users
+            {{ investments.length }} Investments
           </p>
               <div class="pagination">
                 <button 
@@ -318,14 +389,19 @@ watch([search, status], () => {
 /* Main */
 .main {
   flex: 1;
-  padding: 20px 30px;
+  padding: 0 30px 20px 30px; 
+  overflow-y: auto;
 }
 
 /* Header */
 .header {
+  background-color: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 16px 30px;
   display: flex;
-  gap: 10px;   
-  margin-bottom: 20px;
+  gap: 20px;
+  align-items: center;
+  margin: 0 -30px 24px -30px; 
 }
 
 .header input {

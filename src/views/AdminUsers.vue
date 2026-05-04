@@ -11,47 +11,170 @@ import iconAuditLogs from '@/assets/icon-audit-logs.svg';
 import iconLogout from '@/assets/icon-logout.svg';
 import iconHeader from '@/assets/icon-header.svg';
 import iconNotifications2 from '@/assets/icon-notifications2.svg';
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
+import axios from "axios";
 const currentPage = ref(1);
 const perPage = 15;
 const search = ref("");
 const status = ref("");
-const users = ref([
-  { id: 1, name: "John Doe", email: "john.doe@example.com", status: "Active", joinDate: "2024-01-15", balance: "$12,450" },
-  { id: 2, name: "Jane Smith", email: "jane.smith@example.com", status: "Active", joinDate: "2024-02-20", balance: "$8,230" },
-  { id: 3, name: "Mike Johnson", email: "mike.j@example.com", status: "Disabled", joinDate: "2024-01-08", balance: "$5,120" },
-  { id: 4, name: "Sarah Wilson", email: "sarah.w@example.com", status: "Active", joinDate: "2024-03-12", balance: "$15,890" },
-  { id: 5, name: "Tom Brown", email: "tom.brown@example.com", status: "Pending", joinDate: "2024-03-14", balance: "$2,340" }, 
-]);
+const users = ref([]);
+const totalUsers = ref(0); 
 
 const totalPages = computed(() => {
-  return Math.ceil(filteredUsers.value.length / perPage);
+  return Math.ceil(totalUsers.value / perPage);
 });
 
-const paginatedUsers = computed(() => {
-  const start = (currentPage.value - 1) * perPage;
-  const end = start + perPage;
-  return filteredUsers.value.slice(start, end);
-});
+watch([currentPage, search, status], () => {
+  fetchUsers()
+})
 
-const filteredUsers = computed(() => {
-  return users.value.filter(u => {
-    const s = search.value.toLowerCase();
+const fetchUsers = async () => {
+  try {
+    const token = localStorage.getItem('token')
 
-    const matchSearch =
-      u.name.toLowerCase().includes(s) ||
-      u.email.toLowerCase().includes(s);
+    const res = await axios.get('http://localhost:8080/admin/users', {
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      params: {
+        page: currentPage.value,
+        limit: perPage,
+        search: search.value,
+        status: status.value
+      }
+    })
 
-    const matchStatus =
-      !status.value || u.status === status.value;
+    console.log('USERS:', res.data)
 
-    return matchSearch && matchStatus;
-  });
-});
+    const list = res.data.data
+    const meta = res.data.meta
 
-watch([search, status], () => {
-  currentPage.value = 1;
-});
+    users.value = list.map(u => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      status: u.status,
+      joinDate: u.join_date,
+      balance: `$${(u.balance || 0).toLocaleString()}`
+    }))
+
+    totalUsers.value = meta.total
+
+  } catch (err) {
+    console.error('Error fetch users:', err)
+
+    // handle token expired
+    if (err.response?.status === 401) {
+      localStorage.removeItem('token')
+      window.location.href = '/'
+    }
+  }
+}
+
+const handleLogout = async () => {
+  try {
+    const token = localStorage.getItem('token')
+
+    await axios.post('http://localhost:8080/admin/logout', {}, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+
+  } catch (err) {
+    console.error('Logout error:', err)
+  } finally {
+    // tetap hapus token walaupun request gagal
+    localStorage.removeItem('token')
+    window.location.href = '/'
+  }
+}
+
+
+const openDropdownId = ref(null)
+const showModal = ref(false)
+const selectedUserId = ref(null)
+const actionType = ref('') // 'delete' | 'disable'
+
+const handleClickOutside = (e) => {
+  if (!e.target.closest('.dropdown')) {
+    openDropdownId.value = null
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
+// notif
+const notification = ref({
+  show: false,
+  message: '',
+  type: '' // success | error
+})
+
+const toggleDropdown = (id) => {
+  openDropdownId.value =
+    openDropdownId.value === id ? null : id
+}
+
+const openConfirm = (id, type) => {
+  selectedUserId.value = id
+  actionType.value = type
+  showModal.value = true
+  openDropdownId.value = null
+}
+
+const handleAction = async () => {
+  try {
+    const token = localStorage.getItem('token')
+
+    if (actionType.value === 'disable') {
+      await axios.patch(
+        `http://localhost:8080/admin/users/${selectedUserId.value}/disable`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      )
+      showNotif('User berhasil di-disable', 'success')
+    }
+
+    if (actionType.value === 'delete') {
+      await axios.delete(
+        `http://localhost:8080/admin/users/${selectedUserId.value}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      )
+      showNotif('User berhasil dihapus', 'success')
+    }
+
+    fetchUsers()
+  } catch (err) {
+    showNotif('Aksi gagal!', 'error')
+  } finally {
+    showModal.value = false
+  }
+}
+
+const showNotif = (msg, type) => {
+  notification.value = {
+    show: true,
+    message: msg,
+    type
+  }
+
+  setTimeout(() => {
+    notification.value.show = false
+  }, 3000)
+}
+onMounted(() => {
+  fetchUsers()
+})
 </script>
 
 <template>
@@ -79,7 +202,7 @@ watch([search, status], () => {
                 <img :src="iconInvestments" class="icon-sidebar">
                 Investments
             </a>
-            <a>
+            <a @click.prevent="$router.push('/adminBudgets')">
                 <img :src="iconBudgets" class="icon-sidebar">
                 Budgets
             </a>
@@ -96,7 +219,7 @@ watch([search, status], () => {
                 Audit Logs
             </a>
         </nav>
-            <div class="logout">
+            <div class="logout" @click="handleLogout">
                 <img :src="iconLogout" class="icon-sidebar">
                 Logout
             </div>
@@ -156,13 +279,13 @@ watch([search, status], () => {
             </thead>
 
             <tbody>
-                <tr v-for="u in paginatedUsers" :key="u.id">
+                <tr v-for="u in users" :key="u.id">
                 <td>#{{ u.id }}</td>
                 <td>{{ u.name }}</td>
                 <td>{{ u.email }}</td>
 
                 <td>
-                    <span :class="['badge', u.status.toLowerCase()]">
+                    <span :class="['badge', (u.status || '').toLowerCase()]">
                     {{ u.status }}
                     </span>
                 </td>
@@ -170,7 +293,19 @@ watch([search, status], () => {
                 <td>{{ u.joinDate }}</td>
                 <td class="bold">{{ u.balance }}</td>
 
-                <td class="action">⋮</td>
+                <td class="action">
+                  <div class="dropdown">
+                    <span @click="toggleDropdown(u.id)">⋮</span>
+
+                    <div v-if="openDropdownId === u.id" class="dropdown-menu">
+                      <div @click="openConfirm(u.id, 'disable')" 
+                          v-if="u.status !== 'Disabled'">
+                        Disable
+                      </div>
+                      <div @click="openConfirm(u.id, 'delete')">Delete</div>
+                    </div>
+                  </div>
+                </td>
                 </tr>
             </tbody>
             </table>
@@ -181,9 +316,9 @@ watch([search, status], () => {
             Showing 
             {{ (currentPage - 1) * perPage + 1 }} 
             to 
-            {{ Math.min(currentPage * perPage, filteredUsers.length) }} 
+            {{ Math.min(currentPage * perPage, totalUsers) }} 
             of 
-            {{ filteredUsers.length }} Users
+            {{ totalUsers }} Users
           </p>
               <div class="pagination">
                 <button 
@@ -213,6 +348,29 @@ watch([search, status], () => {
         </div>
 
     </main>
+    <div v-if="showModal" class="modal-overlay">
+      <div class="modal">
+        <h3>Konfirmasi</h3>
+        <p>
+          Yakin mau
+          {{ actionType === 'delete' ? 'menghapus' : 'disable' }} user ini?
+        </p>
+
+        <div class="modal-actions">
+          <button @click="showModal = false">Batal</button>
+          <button class="danger" @click="handleAction">
+            Ya, lanjutkan
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div 
+      v-if="notification.show" 
+      :class="['notif', notification.type]"
+    >
+      {{ notification.message }}
+    </div>
   </div>
 </template>
 
@@ -296,14 +454,19 @@ watch([search, status], () => {
 /* Main */
 .main {
   flex: 1;
-  padding: 20px 30px;
+  padding: 0 30px 20px 30px; 
+  overflow-y: auto;
 }
 
 /* Header */
 .header {
+  background-color: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 16px 30px;
   display: flex;
-  gap: 10px;   
-  margin-bottom: 20px;
+  gap: 20px;
+  align-items: center;
+  margin: 0 -30px 24px -30px; 
 }
 
 .header input {
@@ -415,16 +578,18 @@ th {
   border-bottom: 1px solid #eee;
   background-color: #F3F4F680;
   text-align: left;
+  font-size:20px;
 }
 
 td {
   padding: 12px;
   border-bottom: 1px solid #eee;
   text-align: left;
+  font-size:20px;
 }
 
 .action {
-  width: 50px;
+  width: 100px;
   text-align: center;
 }
 
@@ -440,7 +605,7 @@ td {
 .badge {
   padding: 4px 10px;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 20px;
 }
 
 .badge.active {
@@ -463,6 +628,7 @@ td {
   display: flex;
   justify-content: space-between;
   margin-top: 15px;
+  font-size: 20px;
 }
 
 .pagination button {
@@ -470,6 +636,7 @@ td {
   padding: 6px 10px;
   border-radius: 6px;
   border: 1px solid #ddd;
+  font-size: 20px;
 }
 
 .pagination button:disabled {
@@ -480,6 +647,94 @@ td {
 .pagination .active {
   background: #2563eb;
   color: white;
+}
+
+/* dropdown */
+.dropdown {
+  position: relative;
+  cursor: pointer;
+}
+
+.dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  overflow: hidden;
+  z-index: 10;
+}
+
+.dropdown-menu div {
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.dropdown-menu div:hover {
+  background: #f3f4f6;
+}
+
+/* modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  width: 300px;
+  text-align: center;
+}
+
+.modal-actions {
+  margin-top: 15px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.modal-actions button {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+}
+
+.modal-actions .danger {
+  background: #ef4444;
+  color: white;
+}
+
+/* notif */
+.notif {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  color: white;
+  z-index: 999;
+}
+
+.notif.success {
+  background: #10b981;
+}
+
+.notif.error {
+  background: #ef4444;
+}
+
+.modal-overlay {
+  z-index: 9999;
 }
 
 </style>
