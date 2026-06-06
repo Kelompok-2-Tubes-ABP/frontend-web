@@ -12,6 +12,9 @@ import iconLogout from '@/assets/icon-logout.svg';
 import iconHeader from '@/assets/icon-header.svg';
 import iconNotifications2 from '@/assets/icon-notifications2.svg';
 import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
+const isSidebarOpen = ref(false);
+const toggleSidebar = () => { isSidebarOpen.value = !isSidebarOpen.value; };
+const closeSidebarOnMobile = () => { if (window.innerWidth < 1024) isSidebarOpen.value = false; };
 import axios from "axios";
 const currentPage = ref(1);
 const perPage = 15;
@@ -178,7 +181,14 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="layout">
+  <div class="layout" :class="{ 'sidebar-open': isSidebarOpen }">
+    <!-- Sidebar Toggle Button -->
+    <button class="sidebar-toggle" @click="toggleSidebar" :class="{ 'active': isSidebarOpen }">
+      <svg v-if="!isSidebarOpen" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div v-if="isSidebarOpen" class="sidebar-overlay" @click="closeSidebarOnMobile"></div>
+
     <!-- Sidebar -->
     <aside class="sidebar">
         <div class="brand">
@@ -206,15 +216,15 @@ onMounted(() => {
                 <img :src="iconBudgets" class="icon-sidebar">
                 Budgets
             </a>
-            <a>
+            <a @click.prevent="$router.push('/adminAnalytics')">
                 <img :src="iconAnalytics" class="icon-sidebar">
                 Analytics
             </a>
-            <a>
+            <a @click.prevent="$router.push('/adminNotifications')">
                 <img :src="iconNotifications" class="icon-sidebar">
                 Notifications
             </a>
-            <a>
+            <a @click.prevent="$router.push('/adminAudit')">
                 <img :src="iconAuditLogs" class="icon-sidebar">
                 Audit Logs
             </a>
@@ -737,4 +747,37 @@ td {
   z-index: 9999;
 }
 
+/* Sidebar Toggle & Responsive */
+.sidebar-toggle { display: none; position: fixed; left: 0; top: 50%; transform: translateY(-50%); z-index: 1001; background: #1e3a8a; color: white; border: none; border-radius: 0 8px 8px 0; padding: 12px 8px; cursor: pointer; align-items: center; justify-content: center; box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1); transition: all 0.3s ease; width: 36px; height: 48px; }
+.sidebar-toggle.active { left: 250px; border-radius: 8px 0 0 8px; }
+.sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.4); z-index: 999; }
+
+@media (max-width: 1024px) {
+  .sidebar-toggle { display: flex; }
+  .layout.sidebar-open .sidebar-overlay { display: block; }
+  .sidebar { position: fixed; top: 0; left: 0; height: 100vh; max-height: 100vh; width: 260px; z-index: 1000; transform: translateX(-100%); transition: transform 0.3s ease; overflow: hidden; padding: 12px; box-sizing: border-box; display: flex; flex-direction: column; }
+  .layout.sidebar-open .sidebar { transform: translateX(0); }
+  .brand { margin-bottom: 20px; margin-top: 5px; flex-shrink: 0; }
+  .logo { width: 32px; height: 32px; }
+  .titlelogo { font-size: 18px; }
+  .sidebar nav { flex: 1; overflow-y: auto; margin-bottom: 10px; }
+  .sidebar nav a { padding: 10px 12px; margin-bottom: 4px; font-size: 14px; }
+  .icon-sidebar { width: 22px; height: 22px; }
+  .logout { margin-top: auto; font-size: 14px; padding: 10px 12px; flex-shrink: 0; }
+  
+  .main { width: 100%; padding: 0 15px 20px 15px; }
+  .header { margin: 0 -15px 24px -15px; padding: 16px 15px; }
+  .header input { width: 200px; font-size: 16px; }
+  .icon-header { width: 24px; height: 24px; padding: 8px; }
+  .role-badge { font-size: 14px; }
+  .avatar { width: 36px; height: 36px; font-size: 14px; }
+  .username { font-size: 14px; }
+  
+  h1 { font-size: 28px; }
+  .subtitle { font-size: 14px; }
+  
+  .filter { flex-direction: column; }
+  .filter input { width: 100%; }
+  .filter select { width: 100%; }
+}
 </style>
