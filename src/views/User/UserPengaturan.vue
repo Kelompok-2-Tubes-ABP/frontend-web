@@ -1,264 +1,290 @@
 <script setup>
+import { ref, onMounted } from 'vue'
 import UserSideBar from '@/components/UserSideBar.vue'
+import { API_BASE } from '../../../services/api.js'
+import iconEditProfile from '@/assets/User/icon-editporfile.svg'
+import axios from 'axios'
 
-/* =========================
-   SETTINGS DATA
-========================= */
-const accountMenus = [
-  {
-    id: 1,
-    icon: '👤',
-    title: 'Edit Profil',
-    desc: 'Ubah informasi pribadi kamu',
-    danger: false
-  },
-  {
-    id: 2,
-    icon: '🔒',
-    title: 'Ganti Password',
-    desc: 'Perbarui password akun kamu',
-    danger: false
-  },
-  {
-    id: 3,
-    icon: '🗑',
-    title: 'Hapus Akun',
-    desc: 'Hapus akun dan semua data',
-    danger: true
-  }
-]
+const token = localStorage.getItem('token') || sessionStorage.getItem('token')
 
-const preferenceMenus = [
-  {
-    id: 1,
-    icon: '☀️',
-    title: 'Dark Mode',
-    desc: 'Aktifkan tema gelap',
-    action: 'Aktifkan'
-  },
-  {
-    id: 2,
-    icon: '🌐',
-    title: 'Bahasa',
-    desc: 'Indonesia'
-  },
-  {
-    id: 3,
-    icon: '💱',
-    title: 'Mata Uang Utama',
-    desc: 'IDR - Rupiah'
-  }
-]
+// Profile data
+const profile = ref({ username: '', email: '' })
+const isLoading = ref(true)
 
-const notificationMenus = [
-  {
-    id: 1,
-    title: 'Budget Warning',
-    desc: 'Notifikasi saat budget hampir habis'
-  },
-  {
-    id: 2,
-    title: 'Bill Reminders',
-    desc: 'Pengingat tagihan yang akan jatuh tempo'
-  },
-  {
-    id: 3,
-    title: 'Goal Alerts',
-    desc: 'Notifikasi milestone target tabungan'
-  },
-  {
-    id: 4,
-    title: 'AI Insights',
-    desc: 'Notifikasi insight keuangan dari AI'
-  }
-]
+// Modal state
+const showEditProfileModal = ref(false)
+const showChangePasswordModal = ref(false)
+const editProfileForm = ref({ username: '', email: '' })
+const passwordForm = ref({ current_password: '', new_password: '', confirm_password: '' })
+const profileError = ref('')
+const profileSuccess = ref('')
+const passwordError = ref('')
+const passwordSuccess = ref('')
+const isUpdating = ref(false)
 
-const dataMenus = [
-  {
-    id: 1,
-    icon: '⬇️',
-    title: 'Export CSV',
-    desc: 'Download data transaksi',
-    disabled: false
-  },
-  {
-    id: 2,
-    icon: '⚙️',
-    title: 'Webhook Settings',
-    desc: 'Coming soon',
-    disabled: true
+// Fetch profile
+const fetchProfile = async () => {
+  isLoading.value = true
+  try {
+    const res = await axios.get(`${API_BASE}/profile/`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    const data = res.data.Message || res.data.message
+    profile.value = {
+      username: data.username || '',
+      email: data.email || ''
+    }
+  } catch (err) {
+    console.error('Error fetching profile:', err)
+  } finally {
+    isLoading.value = false
   }
-]
+}
 
-const aboutMenus = [
-  {
-    id: 1,
-    icon: '💜',
-    title: 'Versi App',
-    desc: 'v1.0.0'
-  },
-  {
-    id: 2,
-    icon: '🛡',
-    title: 'Privacy Policy',
-    desc: 'Kebijakan privasi kami'
-  },
-  {
-    id: 3,
-    icon: '📄',
-    title: 'Syarat & Ketentuan',
-    desc: 'Ketentuan penggunaan'
+// Edit Profile
+const openEditProfile = () => {
+  editProfileForm.value = { username: profile.value.username, email: profile.value.email }
+  profileError.value = ''
+  profileSuccess.value = ''
+  showEditProfileModal.value = true
+}
+
+const submitEditProfile = async () => {
+  profileError.value = ''
+  profileSuccess.value = ''
+  isUpdating.value = true
+  try {
+    const updates = {}
+    if (editProfileForm.value.username && editProfileForm.value.username !== profile.value.username) {
+      updates.username = editProfileForm.value.username
+    }
+    if (editProfileForm.value.email && editProfileForm.value.email !== profile.value.email) {
+      updates.email = editProfileForm.value.email
+    }
+    if (Object.keys(updates).length === 0) {
+      profileError.value = 'Tidak ada perubahan'
+      isUpdating.value = false
+      return
+    }
+    const res = await axios.patch(`${API_BASE}/profile/`, updates, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    profile.value = {
+      username: res.data.user?.username || editProfileForm.value.username,
+      email: res.data.user?.email || editProfileForm.value.email
+    }
+    profileSuccess.value = 'Profil berhasil diperbarui!'
+    setTimeout(() => { showEditProfileModal.value = false; profileSuccess.value = '' }, 1500)
+  } catch (err) {
+    profileError.value = err.response?.data?.error || err.response?.data?.Error || 'Gagal memperbarui profil'
+  } finally {
+    isUpdating.value = false
   }
-]
+}
+
+// Change Password
+const openChangePassword = () => {
+  passwordForm.value = { current_password: '', new_password: '', confirm_password: '' }
+  passwordError.value = ''
+  passwordSuccess.value = ''
+  showChangePasswordModal.value = true
+}
+
+const submitChangePassword = async () => {
+  passwordError.value = ''
+  passwordSuccess.value = ''
+  if (!passwordForm.value.current_password || !passwordForm.value.new_password) {
+    passwordError.value = 'Semua field wajib diisi'
+    return
+  }
+  if (passwordForm.value.new_password.length < 8) {
+    passwordError.value = 'Password baru minimal 8 karakter'
+    return
+  }
+  if (!/[A-Z]/.test(passwordForm.value.new_password)) {
+    passwordError.value = 'Password baru harus mengandung minimal 1 huruf besar'
+    return
+  }
+  if (passwordForm.value.new_password !== passwordForm.value.confirm_password) {
+    passwordError.value = 'Password baru tidak sama'
+    return
+  }
+  isUpdating.value = true
+  try {
+    await axios.post(`${API_BASE}/auth/password/change`, {
+      current_password: passwordForm.value.current_password,
+      new_password: passwordForm.value.new_password
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    passwordSuccess.value = 'Password berhasil diubah!'
+    setTimeout(() => { showChangePasswordModal.value = false; passwordSuccess.value = '' }, 1500)
+  } catch (err) {
+    passwordError.value = err.response?.data?.error || 'Gagal mengubah password'
+  } finally {
+    isUpdating.value = false
+  }
+}
+
+onMounted(fetchProfile)
 </script>
 
 <template>
   <div class="dashboard-layout">
-    <!-- SIDEBAR -->
     <UserSideBar />
 
-    <!-- MAIN -->
     <div class="main-wrapper">
-      <!-- TOPBAR FIXED -->
       <div class="topbar">
         <div class="top-header">
           <h1>Pengaturan</h1>
         </div>
       </div>
 
-      <!-- CONTENT SCROLL -->
       <main class="content-scroll">
         <!-- AKUN -->
         <section class="setting-card">
           <h3>Akun</h3>
-
           <div class="setting-list">
-            <button
-              v-for="item in accountMenus"
-              :key="item.id"
-              class="setting-item"
-              :class="{ danger: item.danger }"
-            >
+            <button class="setting-item" @click="openEditProfile">
               <div class="setting-left">
                 <div class="setting-icon">
-                  {{ item.icon }}
+                  <img :src="iconEditProfile" alt="Edit Profile" />
                 </div>
-
                 <div>
-                  <h4>{{ item.title }}</h4>
-                  <p>{{ item.desc }}</p>
+                  <h4>Edit Profil</h4>
+                  <p>Ubah informasi pribadi kamu</p>
+                </div>
+              </div>
+            </button>
+            <button class="setting-item" @click="openChangePassword">
+              <div class="setting-left">
+                <div class="setting-icon">
+                  <img :src="iconEditProfile" alt="Ganti Password" />
+                </div>
+                <div>
+                  <h4>Ganti Password</h4>
+                  <p>Perbarui password akun kamu</p>
                 </div>
               </div>
             </button>
           </div>
         </section>
 
-        <!-- PREFERENSI -->
+        <!-- PREVIEW DATA -->
         <section class="setting-card">
-          <h3>Preferensi</h3>
-
-          <div class="setting-list">
-            <div
-              v-for="item in preferenceMenus"
-              :key="item.id"
-              class="setting-item"
-            >
-              <div class="setting-left">
-                <div class="setting-icon">
-                  {{ item.icon }}
-                </div>
-
-                <div>
-                  <h4>{{ item.title }}</h4>
-                  <p>{{ item.desc }}</p>
-                </div>
-              </div>
-
-              <button
-                v-if="item.action"
-                class="outline-btn"
-              >
-                {{ item.action }}
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <!-- NOTIFIKASI -->
-        <section class="setting-card">
-          <h3>Notifikasi</h3>
-
+          <h3>Data Profil</h3>
           <div class="setting-list compact">
-            <div
-              v-for="item in notificationMenus"
-              :key="item.id"
-              class="setting-item no-icon"
-            >
+            <div class="setting-item no-icon">
               <div>
-                <h4>{{ item.title }}</h4>
-                <p>{{ item.desc }}</p>
+                <h4>Username</h4>
+                <p>{{ profile.username || '...' }}</p>
               </div>
             </div>
-          </div>
-        </section>
-
-        <!-- DATA -->
-        <section class="setting-card">
-          <h3>Data</h3>
-
-          <div class="setting-list">
-            <button
-              v-for="item in dataMenus"
-              :key="item.id"
-              class="setting-item"
-              :class="{ disabled: item.disabled }"
-            >
-              <div class="setting-left">
-                <div class="setting-icon">
-                  {{ item.icon }}
-                </div>
-
-                <div>
-                  <h4>{{ item.title }}</h4>
-                  <p>{{ item.desc }}</p>
-                </div>
+            <div class="setting-item no-icon">
+              <div>
+                <h4>Email</h4>
+                <p>{{ profile.email || '...' }}</p>
               </div>
-            </button>
+            </div>
           </div>
         </section>
 
         <!-- TENTANG -->
         <section class="setting-card">
           <h3>Tentang</h3>
-
-          <div class="setting-list">
-            <button
-              v-for="item in aboutMenus"
-              :key="item.id"
-              class="setting-item"
-            >
+          <div class="setting-list compact">
+            <div class="setting-item no-icon">
               <div class="setting-left">
                 <div class="setting-icon">
-                  {{ item.icon }}
+                  <img :src="iconEditProfile" alt="Versi App" />
                 </div>
-
                 <div>
-                  <h4>{{ item.title }}</h4>
-                  <p>{{ item.desc }}</p>
+                  <h4>Versi App</h4>
+                  <p>v1.0.0</p>
                 </div>
               </div>
-            </button>
+            </div>
+            <div class="setting-item no-icon">
+              <div class="setting-left">
+                <div class="setting-icon">
+                  <img :src="iconEditProfile" alt="Privacy Policy" />
+                </div>
+                <div>
+                  <h4>Privacy Policy</h4>
+                  <p>Kebijakan privasi kami</p>
+                </div>
+              </div>
+            </div>
+            <div class="setting-item no-icon">
+              <div class="setting-left">
+                <div class="setting-icon">
+                  <img :src="iconEditProfile" alt="Syarat & Ketentuan" />
+                </div>
+                <div>
+                  <h4>Syarat & Ketentuan</h4>
+                  <p>Ketentuan penggunaan</p>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
-        <!-- LOGOUT -->
-        <section class="logout-card">
-          <button class="logout-btn">
-            ↪ Keluar
-          </button>
-        </section>
       </main>
     </div>
+
+    <!-- EDIT PROFILE MODAL -->
+    <Transition name="modal">
+      <div v-if="showEditProfileModal" class="modal-overlay" @click.self="showEditProfileModal = false">
+        <div class="modal">
+          <h3>Edit Profil</h3>
+          <div class="modal-field">
+            <label>Username</label>
+            <input v-model="editProfileForm.username" type="text" placeholder="Username" />
+          </div>
+          <div class="modal-field">
+            <label>Email</label>
+            <input v-model="editProfileForm.email" type="email" placeholder="Email" />
+          </div>
+          <div v-if="profileError" class="modal-error">{{ profileError }}</div>
+          <div v-if="profileSuccess" class="modal-success">{{ profileSuccess }}</div>
+          <div class="modal-actions">
+            <button class="modal-cancel" @click="showEditProfileModal = false">Batal</button>
+            <button class="modal-confirm" @click="submitEditProfile" :disabled="isUpdating">
+              {{ isUpdating ? 'Menyimpan...' : 'Simpan' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- CHANGE PASSWORD MODAL -->
+    <Transition name="modal">
+      <div v-if="showChangePasswordModal" class="modal-overlay" @click.self="showChangePasswordModal = false">
+        <div class="modal">
+          <h3>Ganti Password</h3>
+          <div class="modal-field">
+            <label>Password Lama</label>
+            <input v-model="passwordForm.current_password" type="password" placeholder="Masukkan password lama" />
+          </div>
+          <div class="modal-field">
+            <label>Password Baru</label>
+            <input v-model="passwordForm.new_password" type="password" placeholder="Minimal 8 karakter, 1 huruf besar" />
+          </div>
+          <div class="modal-field">
+            <label>Konfirmasi Password Baru</label>
+            <input v-model="passwordForm.confirm_password" type="password" placeholder="Ulangi password baru" />
+          </div>
+          <div v-if="passwordError" class="modal-error">{{ passwordError }}</div>
+          <div v-if="passwordSuccess" class="modal-success">{{ passwordSuccess }}</div>
+          <div class="modal-actions">
+            <button class="modal-cancel" @click="showChangePasswordModal = false">Batal</button>
+            <button class="modal-confirm" @click="submitChangePassword" :disabled="isUpdating">
+              {{ isUpdating ? 'Mengubah...' : 'Ubah Password' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -270,14 +296,12 @@ const aboutMenus = [
   font-family: 'Inter', sans-serif;
 }
 
-/* MAIN - MENGIKUTI TEMPLATE */
 .main-wrapper {
   flex: 1;
   margin-left: 300px;
   padding-top: 200px;
 }
 
-/* TOPBAR FIXED */
 .topbar {
   position: fixed;
   top: 0;
@@ -308,14 +332,11 @@ const aboutMenus = [
   color: #1e293b;
 }
 
-/* CONTENT */
 .content-scroll {
   padding: 0 30px 40px;
 }
 
-/* CARD */
-.setting-card,
-.logout-card {
+.setting-card {
   background: white;
   border-radius: 22px;
   padding: 24px 26px;
@@ -330,7 +351,6 @@ const aboutMenus = [
   font-weight: 700;
 }
 
-/* LIST */
 .setting-list {
   display: flex;
   flex-direction: column;
@@ -341,19 +361,21 @@ const aboutMenus = [
   gap: 18px;
 }
 
-/* ITEM */
 .setting-item {
   width: 100%;
   border: none;
   background: transparent;
   padding: 0;
   text-align: left;
-
   display: flex;
   align-items: center;
   justify-content: space-between;
-
   cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.setting-item:active {
+  opacity: 0.7;
 }
 
 .setting-left {
@@ -366,13 +388,18 @@ const aboutMenus = [
   width: 24px;
   height: 24px;
   color: #4f46e5;
-
   display: flex;
   justify-content: center;
   align-items: center;
-
   font-size: 15px;
   flex-shrink: 0;
+}
+
+.setting-icon img {
+  width: 24px;
+  height: 24px;
+  display: block;
+  object-fit: contain;
 }
 
 .setting-item h4 {
@@ -393,7 +420,6 @@ const aboutMenus = [
   color: #4f46e5;
 }
 
-/* NO ICON */
 .setting-item.no-icon {
   cursor: default;
 }
@@ -402,72 +428,165 @@ const aboutMenus = [
   color: #1e293b;
 }
 
-/* DANGER */
-.setting-item.danger h4,
-.setting-item.danger .setting-icon {
-  color: #ef4444;
+/* Modal Transitions */
+.modal-enter-active,
+.modal-leave-active {
+  transition: all 0.3s ease;
 }
 
-.setting-item.danger:hover h4 {
-  color: #dc2626;
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
 }
 
-/* DISABLED */
-.setting-item.disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
+.modal-enter-from .modal,
+.modal-leave-to .modal {
+  transform: scale(0.95) translateY(10px);
+  opacity: 0;
 }
 
-.setting-item.disabled:hover h4 {
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal {
+  background: white;
+  border-radius: 16px;
+  padding: 28px 32px;
+  width: 100%;
+  max-width: 420px;
+  box-sizing: border-box;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal h3 {
+  margin: 0 0 20px;
+  font-size: 18px;
+  font-weight: 700;
   color: #1e293b;
 }
 
-/* OUTLINE BUTTON */
-.outline-btn {
-  width: 90px;
-  height: 38px;
-  border: 2px solid #4f46e5;
-  border-radius: 10px;
-  background: transparent;
-  color: #4f46e5;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
+.modal-field {
+  margin-bottom: 20px;
 }
 
-.outline-btn:hover {
+.modal-field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.modal-field input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.modal-field input:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
+}
+
+.modal-error {
+  color: #ef4444;
+  font-size: 13px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: #fee2e2;
+  border-radius: 6px;
+}
+
+.modal-success {
+  color: #10b981;
+  font-size: 13px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: #d1fae5;
+  border-radius: 6px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.modal-cancel,
+.modal-confirm {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.modal-cancel {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.modal-cancel:hover {
+  background: #e5e7eb;
+}
+
+.modal-confirm {
   background: #4f46e5;
   color: white;
 }
 
-/* LOGOUT */
-.logout-card {
-  padding: 22px;
+.modal-confirm:hover {
+  background: #4338ca;
 }
 
-.logout-btn {
-  width: 100%;
-  height: 54px;
-  border: none;
-  border-radius: 14px;
-  background: #ef4444;
-  color: white;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+.modal-confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.logout-btn:hover {
-  background: #dc2626;
-}
-
-/* RESPONSIVE */
+/* Responsive */
 @media (max-width: 900px) {
-  .dashboard-layout {
-    min-height: 100vh;
-  }
-
   .main-wrapper {
     margin-left: 0;
     padding-top: 120px;
@@ -492,15 +611,9 @@ const aboutMenus = [
     padding: 0 16px 30px;
   }
 
-  .setting-card,
-  .logout-card {
+  .setting-card {
     border-radius: 18px;
     padding: 22px;
-  }
-
-  .outline-btn {
-    width: 84px;
-    height: 36px;
   }
 }
 </style>

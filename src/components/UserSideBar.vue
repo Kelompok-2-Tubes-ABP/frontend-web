@@ -1,5 +1,9 @@
 <script setup>
-import { RouterLink } from "vue-router";
+import { ref, onMounted, computed } from "vue";
+import { RouterLink, useRouter } from "vue-router";
+import axios from "axios";
+import { API_BASE } from "../../services/api.js";
+import iconLogout from "../assets/User/icon-logout.svg";
 
 import {
   LayoutDashboard,
@@ -14,7 +18,7 @@ import {
   Settings,
   Bell,
   Moon,
-  
+
 } from "lucide-vue-next";
 
 const menus = [
@@ -26,12 +30,54 @@ const menus = [
   { path:'/userHutang',name: "Hutang", icon: ArrowLeftRight },
   { path:'/userRecurring',name: "Recurring", icon: Repeat },
   { path:'/userBill',name: "Bill Reminder", icon: Receipt },
-  { path:'/userInsights',name: "Insights", icon: TrendingUp },
   { path:'/userChatBot',name: "AI Chatbot", icon: MessageSquare },
   { path:'/userNotifikasi',name: "Notifikasi", icon: Bell },
   { path:'/userPengaturan',name: "Pengaturan", icon: Settings }
 
 ];
+
+const router = useRouter();
+const username = ref("");
+const avatarLetter = computed(() => {
+  const name = username.value || "";
+  return name ? name.charAt(0).toUpperCase() : "U";
+});
+
+const fetchProfile = async () => {
+  const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+  if (!token) return;
+  try {
+    const res = await axios.get(`${API_BASE}/profile/`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = res.data.Message || res.data.message;
+    username.value = data.username || "";
+  } catch (err) {
+    console.error("Error fetching profile:", err);
+  }
+};
+
+const handleLogout = async () => {
+  const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+  try {
+    await axios.post(
+      `${API_BASE}/auth/logout`,
+      {},
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+  } catch (err) {
+    console.error("Logout error:", err);
+  } finally {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("role");
+    router.push("/");
+  }
+};
+
+onMounted(fetchProfile);
 </script>
 
 <template>
@@ -44,10 +90,10 @@ const menus = [
 
     <!-- Profile Card -->
     <div class="profile-card">
-      <div class="avatar">O</div>
+      <div class="avatar">{{ avatarLetter }}</div>
 
       <div class="profile-info">
-        <h3>Orcas</h3>
+        <h3>{{ username || 'User' }}</h3>
         <span>Rp 8.450.000</span>
       </div>
     </div>
@@ -66,11 +112,13 @@ const menus = [
       </routerLink>
     </nav>
 
-    <!-- Dark Mode -->
-    <button class="dark-mode-btn">
-      <Moon :size="18" />
-      <span>Mode Gelap</span>
-    </button>
+    <!-- Logout Button (bottom) -->
+    <div class="sidebar-logout">
+      <button class="logout-btn" @click="handleLogout">
+        <img :src="iconLogout" alt="Keluar" class="logout-icon" />
+        <span>Keluar</span>
+      </button>
+    </div>
   </aside>
 </template>
 
@@ -149,7 +197,6 @@ const menus = [
   display: flex;
   flex-direction: column;
   gap: 10px;
-  flex: 1;
 }
 
 .menu-item {
@@ -174,29 +221,47 @@ const menus = [
   color: white;
 }
 
-/* Dark Mode */
-.dark-mode-btn {
+/* Sidebar Logout */
+.sidebar-logout {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.logout-btn {
   width: 100%;
-  padding: 14px;
-  border-radius: 16px;
-  border: 2px solid #4f46e5;
-  background: transparent;
-  color: #4f46e5;
+  height: 50px;
+  border: none;
+  border-radius: 14px;
+  background: #ef4444;
+  color: white;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+  transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  cursor: pointer;
-  font-size: 20px;
-  font-weight: 500;
-  transition: 0.2s;
-
-  margin-top: 20px;
-  margin-bottom: 40px;
 }
 
-.dark-mode-btn:hover {
-  background: #4f46e5;
-  color: white;
+.logout-icon {
+  width: 22px;
+  height: 22px;
+  display: block;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+}
+
+.logout-btn:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
+}
+
+.logout-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
 }
 </style>

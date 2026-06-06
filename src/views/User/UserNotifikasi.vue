@@ -1,130 +1,174 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import UserSideBar from '@/components/UserSideBar.vue'
+import iconNotifAlert from '@/assets/icon-notifAlert.svg'
+import iconTransaction from '@/assets/User/icon-transaction.svg'
+import iconBill from '@/assets/User/icon-bill.svg'
+import iconTrendingDown from '@/assets/User/icon-TrendingDown.svg'
+import iconGoal from '@/assets/User/icon-goals.svg'
+import iconNotifications from '@/assets/icon-notifications.svg'
 
-/* =========================
-   DATA NOTIFIKASI
-========================= */
-const notificationGroups = ref([
-  {
-    group: 'Hari Ini',
-    items: [
-      {
-        id: 1,
-        icon: '!',
-        iconClass: 'red',
-        title: 'Budget terlampaui',
-        desc: 'Budget Makanan 100% terlampaui',
-        time: '14:30',
-        unread: true
-      },
-      {
-        id: 2,
-        icon: '!',
-        iconClass: 'orange',
-        title: 'Budget hampir habis',
-        desc: 'Budget Transportasi 80% terpakai',
-        time: '10:15',
-        unread: true
-      },
-      {
-        id: 3,
-        icon: '💵',
-        iconClass: 'yellow',
-        title: 'Tagihan jatuh tempo',
-        desc: 'PLN jatuh tempo besok, Rp 350.000',
-        time: '08:00',
-        unread: true
-      }
-    ]
-  },
-  {
-    group: 'Kemarin',
-    items: [
-      {
-        id: 4,
-        icon: '🎯',
-        iconClass: 'green',
-        title: 'Goal milestone',
-        desc: 'Tabungan Laptop 50% tercapai 🎉',
-        time: '2 Mei, 16:45',
-        unread: false
-      },
-      {
-        id: 5,
-        icon: '↻',
-        iconClass: 'purple',
-        title: 'Recurring executed',
-        desc: 'Langganan Netflix Rp 54.000 dicatat',
-        time: '2 Mei, 12:00',
-        unread: false
-      },
-      {
-        id: 6,
-        icon: '💡',
-        iconClass: 'yellow',
-        title: 'New insight',
-        desc: 'AI menemukan pola baru di pengeluaran kamu',
-        time: '2 Mei, 09:30',
-        unread: false
-      }
-    ]
-  },
-  {
-    group: 'Minggu Ini',
-    items: [
-      {
-        id: 7,
-        icon: '↙',
-        iconClass: 'red',
-        title: 'Debt reminder',
-        desc: 'Hutang ke Andi jatuh tempo 3 hari lagi',
-        time: '1 Mei, 10:00',
-        unread: false
-      },
-      {
-        id: 8,
-        icon: '↗',
-        iconClass: 'green',
-        title: 'Achievement unlocked',
-        desc: 'Kamu sudah menabung 5 kali minggu ini 🏆',
-        time: '30 Apr, 18:20',
-        unread: false
-      },
-      {
-        id: 9,
-        icon: '💵',
-        iconClass: 'yellow',
-        title: 'Bill paid',
-        desc: 'Pembayaran Internet Rp 350.000 berhasil dicatat',
-        time: '29 Apr, 14:10',
-        unread: false
-      }
-    ]
+const API_BASE = 'http://localhost:8080/api/notifications/feed'
+const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+
+const notificationGroups = ref([])
+const isLoading = ref(true)
+
+
+const getNotifStyle = (type) => {
+  switch (type) {
+    case 'budget': return { iconSrc: iconNotifAlert, iconClass: 'red' }
+    case 'transaction': return { iconSrc: iconTransaction, iconClass: 'green' }
+    case 'bill': return { iconSrc: iconBill, iconClass: 'yellow' }
+    case 'debt': return { iconSrc: iconTrendingDown, iconClass: 'red' }
+    case 'goal': return { iconSrc: iconGoal, iconClass: 'green' }
+    case 'security': return { iconSrc: iconNotifAlert, iconClass: 'purple' }
+    case 'system': return { iconSrc: iconNotifAlert, iconClass: 'yellow' }
+    default: return { iconSrc: iconNotifications, iconClass: 'purple' }
   }
-])
+}
 
-/* =========================
-   COMPUTED
-========================= */
+// Format ISO date string to readable time
+const formatTime = (dateString) => {
+  const date = new Date(dateString)
+  const now = new Date()
+  const isToday = date.toDateString() === now.toDateString()
+  
+  if (isToday) {
+    return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+  }
+  
+  const yesterday = new Date()
+  yesterday.setDate(now.getDate() - 1)
+  if (date.toDateString() === yesterday.toDateString()) {
+    return 'Kemarin, ' + date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+  }
+  
+  return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) + ', ' + date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+}
+
+const groupNotificationsByDate = (notifications) => {
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  
+  const sevenDaysAgo = new Date(today)
+  sevenDaysAgo.setDate(today.getDate() - 7)
+
+  const groups = {
+    'Hari Ini': [],
+    'Kemarin': [],
+    'Minggu Ini': [],
+    'Lebih Lama': []
+  }
+
+  notifications.forEach(notif => {
+    const notifDate = new Date(notif.created_at)
+    const notifDay = new Date(notifDate.getFullYear(), notifDate.getMonth(), notifDate.getDate())
+
+    if (notifDay.getTime() === today.getTime()) {
+      groups['Hari Ini'].push(notif)
+    } else if (notifDay.getTime() === yesterday.getTime()) {
+      groups['Kemarin'].push(notif)
+    } else if (notifDay > sevenDaysAgo) {
+      groups['Minggu Ini'].push(notif)
+    } else {
+      groups['Lebih Lama'].push(notif)
+    }
+  })
+
+  // Filter out empty groups and return as array
+  return Object.keys(groups)
+    .filter(key => groups[key].length > 0)
+    .map(key => ({ group: key, items: groups[key] }))
+}
+
+const fetchNotifications = async () => {
+  isLoading.value = true
+  try {
+    const response = await fetch(API_BASE, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+    
+    if (!response.ok) throw new Error('Failed to fetch')
+    const data = await response.json()
+    
+  
+    const mappedNotifications = data.notifications.map(notif => ({
+      id: notif.id,
+      title: notif.title,
+      desc: notif.message,
+      time: formatTime(notif.created_at),
+      unread: !notif.is_read,
+      link: notif.link,
+      type: notif.type,
+      created_at: notif.created_at, 
+      ...getNotifStyle(notif.type)
+    }))
+    
+    notificationGroups.value = groupNotificationsByDate(mappedNotifications)
+  } catch (error) {
+    console.error('Error fetching notifications:', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const markAllAsRead = async () => {
+  try {
+    await fetch(`${API_BASE}/read-all`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    // Update local state optimistically
+    notificationGroups.value = notificationGroups.value.map(group => ({
+      ...group,
+      items: group.items.map(item => ({ ...item, unread: false }))
+    }))
+  } catch (error) {
+    console.error('Failed to mark all as read', error)
+  }
+}
+
+const handleCardClick = async (item) => {
+  // Mark as read via API if it's currently unread
+  if (item.unread) {
+    try {
+      await fetch(`${API_BASE}/${item.id}/read`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      item.unread = false // Update local state
+    } catch (error) {
+      console.error('Failed to mark as read', error)
+    }
+  }
+  
+  // Redirect if the notification has a link
+  if (item.link) {
+    window.location.href = item.link
+  }
+}
+
 const unreadCount = computed(() => {
   return notificationGroups.value.reduce((total, group) => {
     return total + group.items.filter((item) => item.unread).length
   }, 0)
 })
 
-/* =========================
-   ACTION
-========================= */
-const markAllAsRead = () => {
-  notificationGroups.value = notificationGroups.value.map((group) => ({
-    ...group,
-    items: group.items.map((item) => ({
-      ...item,
-      unread: false
-    }))
-  }))
-}
+onMounted(() => {
+  fetchNotifications()
+})
 </script>
 
 <template>
@@ -142,14 +186,23 @@ const markAllAsRead = () => {
             <p>{{ unreadCount }} notifikasi belum dibaca</p>
           </div>
 
-          <button class="read-btn" @click="markAllAsRead">
+          <button 
+            class="read-btn" 
+            @click="markAllAsRead"
+            :disabled="unreadCount === 0"
+            :style="{ opacity: unreadCount === 0 ? 0.5 : 1, cursor: unreadCount === 0 ? 'not-allowed' : 'pointer' }"
+          >
             Tandai Semua Dibaca
           </button>
         </div>
       </div>
 
       <!-- CONTENT SCROLL -->
-      <main class="content-scroll">
+      <main class="content-scroll" v-if="!isLoading">
+        <div v-if="notificationGroups.length === 0" class="empty-state">
+          <p>Tidak ada notifikasi saat ini.</p>
+        </div>
+
         <section
           v-for="group in notificationGroups"
           :key="group.group"
@@ -163,12 +216,13 @@ const markAllAsRead = () => {
               :key="item.id"
               class="notification-card"
               :class="{ unread: item.unread }"
+              @click="handleCardClick(item)"
             >
               <div
                 class="notif-icon"
                 :class="item.iconClass"
               >
-                {{ item.icon }}
+                <img :src="item.iconSrc" class="notif-svg-icon" alt="">
               </div>
 
               <div class="notif-content">
@@ -189,6 +243,13 @@ const markAllAsRead = () => {
             </div>
           </div>
         </section>
+      </main>
+      
+      <!-- Loading State -->
+      <main class="content-scroll" v-else>
+        <div class="empty-state">
+          <p>Memuat notifikasi...</p>
+        </div>
       </main>
     </div>
   </div>
@@ -259,9 +320,10 @@ const markAllAsRead = () => {
   font-weight: 700;
   cursor: pointer;
   margin-right: 60px;
+  transition: all 0.2s ease;
 }
 
-.read-btn:hover {
+.read-btn:hover:not(:disabled) {
   background: #4f46e5;
   color: white;
 }
@@ -302,10 +364,24 @@ const markAllAsRead = () => {
 
   border: 2px solid transparent;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  
+  /* Interactive styles */
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.notification-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  background: #fafafa;
 }
 
 .notification-card.unread {
   border-color: #4f46e5;
+}
+
+.notification-card.unread:hover {
+  background: #f8f7ff; /* Slight purple tint for unread on hover */
 }
 
 /* ICON */
@@ -346,6 +422,12 @@ const markAllAsRead = () => {
 .notif-icon.purple {
   background: #ede9fe;
   color: #4f46e5;
+}
+
+.notif-svg-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
 }
 
 /* CONTENT NOTIF */
@@ -399,6 +481,17 @@ const markAllAsRead = () => {
   font-weight: 700;
 }
 
+/* EMPTY STATE */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #64748b;
+  font-size: 14px;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
 /* RESPONSIVE */
 @media (max-width: 900px) {
   .main-wrapper {
@@ -428,6 +521,7 @@ const markAllAsRead = () => {
     min-width: 140px;
     height: 38px;
     font-size: 11px;
+    margin-right: 0;
   }
 
   .content-scroll {

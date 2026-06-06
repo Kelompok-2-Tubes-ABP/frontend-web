@@ -1,8 +1,8 @@
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, onMounted } from 'vue'
 import UserSideBar from '@/components/UserSideBar.vue'
-const textareaRef = ref(null)
 
+const textareaRef = ref(null)
 
 const autoResize = () => {
   if (textareaRef.value) {
@@ -12,83 +12,181 @@ const autoResize = () => {
 }
 
 const handleEnter = (event) => {
-  if (event.shiftKey) {
-    return
-  }
-
+  if (event.shiftKey) return
   event.preventDefault()
   sendMessage()
 }
 
-/* =========================
-   CHAT STATE
-========================= */
+
+const token = localStorage.getItem('token')
+const API_BASE = 'http://localhost:8000'
+const headers = {
+  'Authorization': `Bearer ${token}`,
+  'Content-Type': 'application/json'
+}
+
 const message = ref('')
 const chatBody = ref(null)
 const showQuickPrompt = ref(true)
+const isLoading = ref(false)
 
 const quickPrompts = ref([
-  '📊 Analisis pengeluaran bulan ini',
-  '💡 Tips hemat untuk kategori makanan',
-  '📈 Rekomendasikan strategi investasi',
-  '🎯 Evaluasi progress tabungan saya',
-  '⚠️ Tagihan apa yang harus dibayar minggu ini?',
-  '💰 Berapa sisa budget saya?'
+  'Analisis pengeluaran bulan ini',
+  'Tips hemat untuk kategori makanan',
+  'Rekomendasikan strategi investasi',
+  'Evaluasi progress tabungan saya',
+  'Tagihan apa yang harus dibayar minggu ini?',
+  'Berapa sisa budget saya?'
 ])
 
-const chats = ref([
-  {
-    id: 1,
-    sender: 'bot',
-    text:
-      'Halo! Saya siap bantu analisis keuangan kamu 🤖\nSaya bisa membantumu:\n• Analisis pengeluaran\n• Tips hemat dan investasi\n• Evaluasi progress tabungan\n• Rekomendasi budget\nAda yang ingin kamu tanyakan?',
-    time: '10:09'
+const chats = ref([])
+
+const loadHistory = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/chatbot/history`, { headers })
+    if (!res.ok) return
+    
+    const result = await res.json()
+    
+    if (result.messages && result.messages.length > 0) {
+      showQuickPrompt.value = false
+      
+      // Map backend ChatMessage to frontend format
+      chats.value = result.messages.map((msg, index) => {
+        const time = new Date(msg.timestamp).toLocaleTimeString('id-ID', {
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+        
+        if (msg.message_type === 'user') {
+          return {
+            id: msg.id || index,
+            sender: 'user',
+            text: msg.message,
+            time
+          }
+        } else {
+          return {
+            id: msg.id || index,
+            sender: 'bot',
+            text: msg.response || msg.message,
+            time
+          }
+        }
+      })
+      
+      await nextTick()
+      scrollToBottom()
+    }
+  } catch (err) {
+    console.error('Failed to load chat history:', err)
   }
-])
+}
 
-/* =========================
-   SEND MESSAGE
-========================= */
 const sendMessage = async (text = null) => {
   const finalMessage = text || message.value
-
   if (!finalMessage.trim()) return
+  if (isLoading.value) return // Prevent spam
 
   showQuickPrompt.value = false
 
+  // Add user message to UI immediately
+  const userMsgId = Date.now()
   chats.value.push({
-    id: Date.now(),
+    id: userMsgId,
     sender: 'user',
     text: finalMessage,
     time: getCurrentTime()
   })
 
   message.value = ''
-  
-
   await nextTick()
   if (textareaRef.value) {
     textareaRef.value.style.height = '64px'
   }
   scrollToBottom()
 
-  setTimeout(async () => {
+  // Add typing indicator
+  isLoading.value = true
+  const typingId = Date.now() + 1
+  chats.value.push({
+    id: typingId,
+    sender: 'bot',
+    text: '⏳ Sedang berpikir...',
+    time: getCurrentTime(),
+    isTyping: true
+  })
+  await nextTick()
+  scrollToBottom()
+
+  try {
+    // Call backend
+    const res = await fetch(`${API_BASE}/chatbot/message`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ message: finalMessage })
+    })
+
+    if (!res.ok) throw new Error('Failed to get response')
+    
+    const result = await res.json()
+
+    // Remove typing indicator
+    chats.value = chats.value.filter(c => c.id !== typingId)
+
+    // Add bot response
     chats.value.push({
-      id: Date.now() + 1,
+      id: Date.now() + 2,
       sender: 'bot',
-      text:
-        'Baik, saya akan bantu analisis berdasarkan data keuangan kamu. Untuk saat ini, ini masih response dummy. Nanti bagian ini bisa disambungkan ke API backend atau AI kamu.',
+      text: result.response || 'Maaf, saya tidak bisa merespons saat ini.',
       time: getCurrentTime()
     })
 
+  } catch (err) {
+    console.error('Chat error:', err)
+    // Remove typing indicator
+    chats.value = chats.value.filter(c => c.id !== typingId)
+    // Show error
+    chats.value.push({
+      id: Date.now() + 2,
+      sender: 'bot',
+      text: '❌ Maaf, terjadi kesalahan koneksi. Pastikan Ollama berjalan dan coba lagi.',
+      time: getCurrentTime()
+    })
+  } finally {
+    isLoading.value = false
     await nextTick()
     scrollToBottom()
-  }, 700)
+  }
 }
 
-/* =========================
-   HELPER
-========================= */
+const clearChat = async () => {
+  if (!confirm('Hapus seluruh riwayat percakapan?')) return
+  
+  try {
+    const res = await fetch(`${API_BASE}/chatbot/clear`, {
+      method: 'DELETE',
+      headers
+    })
+    
+    if (!res.ok) throw new Error('Failed to clear')
+    
+    // Reset UI
+    showQuickPrompt.value = true
+    chats.value = [
+      {
+        id: 1,
+        sender: 'bot',
+        text: 'Halo! Saya siap bantu analisis keuangan kamu 🤖\nSaya bisa membantumu:\n• Analisis pengeluaran\n• Tips hemat dan investasi\n• Evaluasi progress tabungan\n• Rekomendasi budget\nAda yang ingin kamu tanyakan?',
+        time: getCurrentTime()
+      }
+    ]
+  } catch (err) {
+    console.error('Clear chat error:', err)
+    alert('Gagal menghapus riwayat percakapan.')
+  }
+}
+
 const getCurrentTime = () => {
   const now = new Date()
   return now.toLocaleTimeString('id-ID', {
@@ -103,20 +201,10 @@ const scrollToBottom = () => {
   }
 }
 
-const clearChat = () => {
-  showQuickPrompt.value = true
-  chats.value = [
-    {
-      id: 1,
-      sender: 'bot',
-      text:
-        'Halo! Saya siap bantu analisis keuangan kamu 🤖\nSaya bisa membantumu:\n• Analisis pengeluaran\n• Tips hemat dan investasi\n• Evaluasi progress tabungan\n• Rekomendasi budget\nAda yang ingin kamu tanyakan?',
-      time: getCurrentTime()
-    }
-  ]
-}
+onMounted(() => {
+  loadHistory()
+})
 </script>
-
 <template>
   <div class="dashboard-layout">
     <!-- SIDEBAR -->
@@ -128,7 +216,7 @@ const clearChat = () => {
       <div class="topbar">
         <div class="top-header">
           <div>
-            <h1>AI Finance Advisor 🤖</h1>
+            <h1>AI Finance Advisor</h1>
             <p>Powered by Gemma3 AI • Bahasa Indonesia</p>
           </div>
 

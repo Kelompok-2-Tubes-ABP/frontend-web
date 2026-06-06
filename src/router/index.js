@@ -21,7 +21,6 @@ import UserInvestasi from '@/views/User/UserInvestasi.vue'
 import UserHutang from '@/views/User/UserHutang.vue'
 import UserRecurring from '@/views/User/UserRecurring.vue'
 import UserBill from '@/views/User/UserBill.vue'
-import UserInsights from '@/views/User/UserInsights.vue'
 import UserChatBot from '@/views/User/UserChatBot.vue'
 import UserPengaturan from '@/views/User/UserPengaturan.vue'
 import UserNotifikasi from '@/views/User/UserNotifikasi.vue'
@@ -107,7 +106,6 @@ const routes = [
   {path: '/userHutang', name: 'userHutang', component: UserHutang, meta: { requiresAuth: true }},
   {path: '/userRecurring', name: 'userRecurring', component: UserRecurring, meta: { requiresAuth: true }},
   {path: '/userBill', name: 'userBill', component: UserBill, meta: { requiresAuth: true }},
-  {path: '/userInsights', name: 'userInsights', component: UserInsights, meta: { requiresAuth: true }},
   {path: '/userChatBot', name: 'userChatBot', component: UserChatBot, meta: { requiresAuth: true }},
   {path: '/userPengaturan', name: 'userPengaturan', component: UserPengaturan, meta: { requiresAuth: true }},
   {path: '/userNotifikasi', name: 'userNotifikasi', component: UserNotifikasi, meta: { requiresAuth: true }}
