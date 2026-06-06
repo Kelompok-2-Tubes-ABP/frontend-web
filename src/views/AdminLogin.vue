@@ -47,7 +47,7 @@ const submitForm = async() => {
   if (!valid) return
 
   try{
-    const res = await axios.post("http://localhost:8080/admin/login", {
+    const res = await axios.post("http://localhost:8000/admin/login", {
       email: form.value.email,
       password: form.value.password
     })
@@ -61,6 +61,7 @@ const submitForm = async() => {
     } catch (error) {
     console.error("Error:", error)
       if (error.response) {
+        console.log("Error Response:", error.response)
         errorMessage.value = error.response?.data?.message || "Email atau password salah"
       } else {
         errorMessage.value = "Terjadi kesalahan. Silakan coba lagi."

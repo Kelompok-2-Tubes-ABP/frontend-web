@@ -21,8 +21,8 @@ import { ref, onMounted } from 'vue'
 const isSidebarOpen = ref(false);
 const toggleSidebar = () => { isSidebarOpen.value = !isSidebarOpen.value; };
 const closeSidebarOnMobile = () => { if (window.innerWidth < 1024) isSidebarOpen.value = false; };
+import MiniChart from '@/components/MiniChart.vue'
 import axios from 'axios'
-const activeRange = ref('daily')
 
 // state utama
 const stats = ref({
@@ -33,12 +33,21 @@ const stats = ref({
 })
 
 const chartData = ref({
-  daily: [],
-  monthly: []
+  labels: [],
+  revenue: [],
+  transactions: []
 })
 
+const getColor = (percent) => {
+  return percent >= 0 ? '#22c55e' : '#ef4444' // hijau / merah
+}
+
+const quickStatsRaw = ref({})
 const topCategories = ref([])
 const activities = ref([])
+const formatDate = (date) => {
+  return new Date(date).toLocaleString()
+}
 
 // fetch function
 const fetchDashboard = async () => {
@@ -49,11 +58,11 @@ const fetchDashboard = async () => {
         Authorization: `Bearer ${token}`
       }
     })
-
-    console.log('RESPONSE:', res.data)
-
+  
     const data = res.data.data
-
+    console.log('Dashboard Data', res.data.data)
+    quickStatsRaw.value = data.quick_stats
+    // ✅ QUICK STATS
     stats.value = {
       totalUsers: data.quick_stats.total_users?.value || 0,
       totalTransactions: data.quick_stats.total_transactions?.value || 0,
@@ -61,22 +70,38 @@ const fetchDashboard = async () => {
       activeSessions: data.quick_stats.active_sessions?.value || 0
     }
 
-    chartData.value = data.chart_data || {
-      daily: { revenue: [], transactions: [] },
-      monthly: { revenue: [], transactions: [] }
+    // ✅ MINI CHART (ambil history daily)
+    miniCharts.value = {
+      users: (data.quick_stats.total_users?.history?.daily || []).map(i => i.value),
+      transactions: (data.quick_stats.total_transactions?.history?.daily || []).map(i => i.value),
+      revenue: (data.quick_stats.total_revenue?.history?.daily || []).map(i => i.value),
+      sessions: (data.quick_stats.active_sessions?.history?.daily || []).map(i => i.value)
     }
+
+    // ✅ MAIN CHART (mapping array jadi format chart)
+    const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+    chartData.value = {
+      labels: data.chart_data.map(item => days[item._id - 1]),
+      revenue: data.chart_data.map(item => item.revenue),
+      transactions: data.chart_data.map(item => item.transactions)
+  }
+
+    // ✅ PIE CHART
     topCategories.value = data.top_categories.map(item => ({
       name: item._id,
       value: Math.round(item.percentage)
     }))
-    activities.value = activities.value = data.recent_activities || []
+
+    // ✅ ACTIVITIES (mapping ulang)
+    activities.value = data.recent_activities.map(item => ({
+      name: item.actor_name,
+      action: item.action_type,
+      detail: item.details,
+      time: item.timestamp
+    }))
 
   } catch (err) {
-    console.error('Error fetch dashboard:', err)
-    if (err.response?.status === 401) {
-      localStorage.removeItem('token')
-      window.location.href = '/'
-    }
+    console.error(err)
   }
 }
 
@@ -98,6 +123,13 @@ const handleLogout = async () => {
     window.location.href = '/'
   }
 }
+
+const miniCharts = ref({
+  users: [],
+  transactions: [],
+  revenue: [],
+  sessions: []
+})
 
 // lifecycle
 onMounted(() => {
@@ -187,6 +219,18 @@ onMounted(() => {
             <img :src="iconTotalUsers" class="icon-stats">
           </div>
           <h2>{{ stats.totalUsers }}</h2>
+          <small 
+            :style="{ color: getColor(quickStatsRaw.total_users?.change_percent || 0) }"
+          >
+            {{ quickStatsRaw.total_users?.change_percent || 0 }}% 
+            vs last month
+            {{ quickStatsRaw.total_users?.change_percent > 0 ? '↑' : '↓' }}
+          </small>
+
+          <MiniChart 
+            :data="miniCharts.users" 
+            :color="getColor(quickStatsRaw.total_users?.change_percent || 0)"
+          />
         </div>
         <div class="card">
           <div class="icon-card">
@@ -194,6 +238,18 @@ onMounted(() => {
             <img :src="iconTotalTransactions" class="icon-stats">
           </div>
           <h2>{{ stats.totalTransactions }}</h2>
+          <small 
+            :style="{ color: getColor(quickStatsRaw.total_transactions?.change_percent || 0) }"
+          >
+            {{ quickStatsRaw.total_transactions?.change_percent || 0 }}% 
+            vs last month
+            {{ quickStatsRaw.total_transactions?.change_percent > 0 ? '↑' : '↓' }}
+          </small>
+
+          <MiniChart 
+            :data="miniCharts.transactions" 
+            :color="getColor(quickStatsRaw.total_transactions?.change_percent || 0)"
+          />
         </div>
         <div class="card">
           <div class="icon-card">
@@ -201,6 +257,18 @@ onMounted(() => {
              <img :src="iconTotalRevenue" class="icon-stats">
           </div>
           <h2>${{ (stats.totalRevenue || 0).toLocaleString() }}</h2>
+          <small 
+            :style="{ color: getColor(quickStatsRaw.total_revenue?.change_percent || 0) }"
+          >
+            {{ quickStatsRaw.total_revenue?.change_percent || 0 }}% 
+            vs last month
+            {{ quickStatsRaw.total_revenue?.change_percent > 0 ? '↑' : '↓' }}
+          </small>
+
+          <MiniChart 
+            :data="miniCharts.revenue" 
+            :color="getColor(quickStatsRaw.total_revenue?.change_percent || 0)"
+          />
         </div>
         <div class="card">
           <div class="icon-card">
@@ -208,6 +276,18 @@ onMounted(() => {
             <img :src="iconActiveSessions" class="icon-stats">
           </div>
           <h2>{{ stats.activeSessions }}</h2>
+          <small 
+            :style="{ color: getColor(quickStatsRaw.active_sessions?.change_percent || 0) }"
+          >
+            {{ quickStatsRaw.active_sessions?.change_percent || 0 }}% 
+            vs last month
+            {{ quickStatsRaw.active_sessions?.change_percent > 0 ? '↑' : '↓' }}
+          </small>
+
+          <MiniChart 
+            :data="miniCharts.sessions" 
+            :color="getColor(quickStatsRaw.active_sessions?.change_percent || 0)"
+          />
         </div>
       </div>
 
@@ -219,25 +299,8 @@ onMounted(() => {
             Revenue & Transactions Overview
           </h4>
         </div>
-        <div class="chart-toggle">
-          <button 
-            :class="{ active: activeRange === 'Daily' }"
-            @click="activeRange = 'Daily'"
-          >
-            Daily
-          </button>
-          <button 
-            :class="{ active: activeRange === 'Monthly' }"
-            @click="activeRange = 'Monthly'"
-          >
-            Monthly
-          </button>
-        </div>
         <div class="chart-content">
-          <LineChart 
-            :range="activeRange" 
-            :data="chartData[activeRange] || {}"
-          />
+          <LineChart :data="chartData" />
         </div>
         </div>
 
@@ -277,13 +340,12 @@ onMounted(() => {
       <!-- Activity -->
       <div class="activity">
         <h3>Recent Activities</h3>
-        <div 
-          class="item"
-          v-for="item in activities"
-          :key="item.name"
-        >
-          <span>{{ item.name }} - {{ item.action }}</span>
-           <b>{{ item.amount ? `$${item.amount}` : '-' }}</b>
+        <div class="item" v-for="item in activities" :key="item.time">
+          <span>
+            {{ item.name }} - {{ item.action }}
+            <small>({{ item.detail }})</small>
+          </span>
+          <b>{{ formatDate(item.time) }}</b>
         </div>
       </div>
     </main>
@@ -512,30 +574,6 @@ h1 {
   margin-bottom: 15px;
   color: rgb(46, 44, 44);
   font-size: 20px
-}
-
-.chart-toggle {
-  width: fit-content;
-  background: #f1f5f9;
-  padding: 4px;
-  margin-bottom: 18px;
-  border-radius: 18px;
-  display: flex;
-  gap: 4px;
-}
-
-.chart-toggle button {
-  border: none;
-  padding: 6px 12px;
-  border-radius: 16px;
-  background: transparent;
-  cursor: pointer;
-  font-size: 20px;
-}
-
-.chart-toggle button.active {
-  background: white;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
 }
 
 .chart-box {

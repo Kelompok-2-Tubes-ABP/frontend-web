@@ -13,6 +13,7 @@ import iconHeader from '@/assets/icon-header.svg';
 import iconNotifications2 from '@/assets/icon-notifications2.svg';
 import iconAuditSearch from '@/assets/icon-auditSearch.svg';
 import { ref, computed, watch, onMounted } from "vue";
+import axios from 'axios';
 
 // Responsive sidebar state
 const isSidebarOpen = ref(false);
@@ -23,13 +24,14 @@ const error = ref(null);
 
 // Data State
 const transactions = ref([]);
-const pagination = ref({ currentPage: 1, totalPages: 1, totalItems: 0, limit: 10 });
 const stats = ref({ totalTransactions: 0, totalAmount: 0, pending: 0 });
 
 // Filters
 const search = ref('');
 const selectedCategory = ref('All Categories');
 const selectedStatus = ref('All Status');
+const currentPage = ref(1);
+const perPage = 10;
 
 const categories = ['All Categories', 'Investment', 'Transfer', 'Bill Payment', 'Shopping'];
 const statuses = ['All Status', 'Completed', 'Pending', 'Failed'];
@@ -38,50 +40,36 @@ const statuses = ['All Status', 'Completed', 'Pending', 'Failed'];
 const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
 const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 
-// Fetch Stats from Dashboard (Since there's no specific /transactions/stats endpoint)
+// Fetch Stats
 const fetchStats = async () => {
   try {
-    const res = await fetch('http://localhost:8080/admin/dashboard', { headers });
-    if (res.ok) {
-      const result = await res.json();
-      if (result.status === 'success') {
-        stats.value.totalTransactions = result.data.quick_stats.total_transactions.value || 0;
-        stats.value.totalAmount = result.data.quick_stats.total_revenue.value || 0;
-        // Note: Backend doesn't provide a pending count in dashboard stats, so we leave it as 0
-      }
+    const res = await axios.get('http://localhost:8080/admin/dashboard', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (res.data.status === 'success') {
+      const qs = res.data.data.quick_stats;
+      stats.value.totalTransactions = qs.total_transactions?.value || 0;
+      stats.value.totalAmount = qs.total_revenue?.value || 0;
     }
   } catch (err) { console.error("Stats Fetch Error:", err); }
 };
 
-// Fetch Transactions (Server-side pagination & search)
+// Fetch All Transactions
 const fetchTransactions = async () => {
   isLoading.value = true;
   error.value = null;
   try {
-    const params = new URLSearchParams({
-      page: pagination.value.currentPage,
-      limit: pagination.value.limit,
-      search: search.value
+    const res = await axios.get('http://localhost:8080/admin/transactions/all', {
+      headers: { Authorization: `Bearer ${token}` }
     });
-    
-    const res = await fetch(`http://localhost:8080/admin/transactions/all?${params.toString()}`, { headers });
-    if (!res.ok) throw new Error('Failed to fetch transactions');
-    const result = await res.json();
-    
-    if (result.status === 'success') {
-      transactions.value = (result.data || []).map(tx => ({
-        id: tx.id || tx._id,
-        user: tx.user_name || 'Unknown',
-        category: tx.category || 'Other',
-        amount: tx.amount || 0,
-        status: tx.status || 'Pending',
-        datetime: tx.date || new Date().toISOString()
-      }));
-      
-      const meta = result.meta || {};
-      pagination.value.totalItems = meta.total || 0;
-      pagination.value.totalPages = Math.ceil(pagination.value.totalItems / pagination.value.limit) || 1;
-    }
+    transactions.value = (res.data.data || []).map(trx => ({
+      id: trx.id || trx._id,
+      user: trx.user_name || 'Unknown',
+      category: (trx.category || 'Other').toLowerCase(),
+      amount: trx.amount || 0,
+      status: trx.status || 'Pending',
+      datetime: trx.date || new Date().toISOString()
+    }));
   } catch (err) {
     error.value = err.message;
     console.error("Transactions Fetch Error:", err);
@@ -90,25 +78,30 @@ const fetchTransactions = async () => {
   }
 };
 
-// Client-side filtering for Category and Status (Applied to the current page)
+// Client-side filtering + sorting
 const filteredTransactions = computed(() => {
-  return transactions.value.filter(trx => {
-    const matchCategory = selectedCategory.value === 'All Categories' || trx.category === selectedCategory.value;
-    const matchStatus = selectedStatus.value === 'All Status' || trx.status === selectedStatus.value;
-    return matchCategory && matchStatus;
-  });
+  return transactions.value
+    .filter(trx => {
+      const keyword = search.value.toLowerCase();
+      const matchSearch = !keyword || 
+        (trx.id || '').toLowerCase().includes(keyword) ||
+        (trx.user || '').toLowerCase().includes(keyword);
+      const matchCategory = selectedCategory.value === 'All Categories' || trx.category === selectedCategory.value.toLowerCase();
+      const matchStatus = selectedStatus.value === 'All Status' || trx.status === selectedStatus.value;
+      return matchSearch && matchCategory && matchStatus;
+    })
+    .sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
 });
 
-// Watch search to reset page and fetch
-watch(search, () => {
-  pagination.value.currentPage = 1;
-  fetchTransactions();
+const totalPages = computed(() => Math.ceil(filteredTransactions.value.length / perPage));
+
+const paginatedTransactions = computed(() => {
+  const start = (currentPage.value - 1) * perPage;
+  return filteredTransactions.value.slice(start, start + perPage);
 });
 
-// Watch currentPage to fetch
-watch(() => pagination.value.currentPage, () => {
-  fetchTransactions();
-});
+// Reset page on filter change
+watch([search, selectedCategory, selectedStatus], () => { currentPage.value = 1; });
 
 onMounted(() => {
   fetchStats();
@@ -122,10 +115,7 @@ const closeSidebarOnMobile = () => { if (window.innerWidth < 1024) isSidebarOpen
 // Logout
 const handleLogout = async () => {
   try {
-    await fetch('http://localhost:8080/admin/logout', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    await axios.post('http://localhost:8080/admin/logout', {}, { headers: { Authorization: `Bearer ${token}` } });
   } catch (err) {
     console.error('Logout error:', err);
   } finally {
@@ -139,7 +129,7 @@ const handleLogout = async () => {
 const formatDate = (dt) => {
   if (!dt) return '';
   const d = new Date(dt);
-  return isNaN(d.getTime()) ? dt : d.toLocaleDateString();
+  return isNaN(d.getTime()) ? dt : d.toLocaleString();
 };
 </script>
 
@@ -210,7 +200,7 @@ const formatDate = (dt) => {
         <div class="filters">
           <div class="search-box">
             <img :src="iconAuditSearch" class="search-icon" alt="">
-            <input v-model="search" type="text" placeholder="Search by category, type, or description..." />
+            <input v-model="search" type="text" placeholder="Search by ID, user..." />
           </div>
           <select v-model="selectedCategory" class="filter-select">
             <option v-for="cat in categories" :key="cat">{{ cat }}</option>
@@ -239,7 +229,7 @@ const formatDate = (dt) => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="trx in filteredTransactions" :key="trx.id">
+              <tr v-for="trx in paginatedTransactions" :key="trx.id">
                 <td class="timestamp">{{ trx.id }}</td>
                 <td>{{ trx.user }}</td>
                 <td>
@@ -262,11 +252,16 @@ const formatDate = (dt) => {
         <!-- Pagination -->
         <div v-if="!isLoading && filteredTransactions.length > 0" class="pagination">
           <span class="showing">
-            Page {{ pagination.currentPage }} of {{ pagination.totalPages }}
+            Showing {{ (currentPage - 1) * perPage + 1 }} to {{ Math.min(currentPage * perPage, filteredTransactions.length) }} of {{ filteredTransactions.length }} transactions
           </span>
           <div class="pagination-controls">
-            <button class="page-btn" :disabled="pagination.currentPage === 1" @click="pagination.currentPage--">Previous</button>
-            <button class="page-btn" :disabled="pagination.currentPage === pagination.totalPages" @click="pagination.currentPage++">Next</button>
+            <button class="page-btn" :disabled="currentPage === 1" @click="currentPage--">Previous</button>
+            <button 
+              v-for="page in totalPages" :key="page"
+              :class="['page-number', { active: currentPage === page }]"
+              @click="currentPage = page"
+            >{{ page }}</button>
+            <button class="page-btn" :disabled="currentPage === totalPages" @click="currentPage++">Next</button>
           </div>
         </div>
       </div>
@@ -330,13 +325,9 @@ h1 { font-size: 36px; margin: 0 0 8px 0; font-weight: 700; color: #111827; lette
 
 /* Category Badges */
 .category-badge { display: inline-block; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; }
-/* Shopping = Red */
 .shopping { background: #ffe4e6; color: #9f1239; }
-/* Investment = Blue */
 .investment { background: #dbeafe; color: #1e40af; }
-/* Transfer = Green */
 .transfer { background: #d1fae5; color: #065f46; }
-/* Bill Payment = Purple */
 .bill-payment { background: #ede9fe; color: #5b21b6; }
 
 .action-badge { display: inline-block; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; }
@@ -351,6 +342,9 @@ h1 { font-size: 36px; margin: 0 0 8px 0; font-weight: 700; color: #111827; lette
 .page-btn { padding: 8px 16px; border: 1px solid #e5e7eb; background: white; border-radius: 6px; font-size: 13px; font-weight: 500; color: #374151; cursor: pointer; transition: all 0.2s; }
 .page-btn:hover:not(:disabled) { background: #f3f4f6; border-color: #d1d5db; }
 .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.page-number { padding: 8px 12px; border: 1px solid #e5e7eb; background: white; border-radius: 6px; font-size: 13px; font-weight: 500; color: #374151; cursor: pointer; transition: all 0.2s; min-width: 36px; }
+.page-number:hover { background: #f3f4f6; }
+.page-number.active { background: #1e3a8a; color: white; border-color: #1e3a8a; }
 
 /* States */
 .loading-state, .empty-state { text-align: center; padding: 40px; color: #6b7280; font-size: 15px; }
