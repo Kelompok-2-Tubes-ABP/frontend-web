@@ -13,6 +13,7 @@ import iconHeader from '@/assets/icon-header.svg';
 import iconNotifications2 from '@/assets/icon-notifications2.svg';
 import iconBudgetActive from '@/assets/icon-budgetActive.svg';
 import iconBudgetAttention from '@/assets/icon-budgetsAttention.svg';
+import { API_BASE } from '../../services/api.js';
 import { ref, computed, onMounted } from "vue";
 
 // Responsive sidebar state
@@ -67,7 +68,7 @@ const headers = {
 
 // 1. Fetch Global Stats
 const fetchStats = async () => {
-  const res = await fetch('http://localhost:8080/admin/budget-savings/stats', { headers });
+  const res = await fetch(`${API_BASE}/admin/budget-savings/stats`, { headers });
   if (!res.ok) throw new Error('Failed to fetch stats');
   const result = await res.json();
   if (result.status === 'success') {
@@ -82,7 +83,7 @@ const fetchStats = async () => {
 // 2. Fetch All User Budgets
 const fetchBudgets = async () => {
   // We request limit=50 to show a good amount on the admin page
-  const res = await fetch('http://localhost:8080/admin/budgets?limit=50', { headers });
+  const res = await fetch(`${API_BASE}/admin/budgets?limit=50`, { headers });
   if (!res.ok) throw new Error('Failed to fetch budgets');
   const result = await res.json();
   
@@ -100,7 +101,7 @@ const fetchBudgets = async () => {
 
 // 3. Fetch All Savings Goals
 const fetchSavings = async () => {
-  const res = await fetch('http://localhost:8080/admin/savings-goals?limit=50', { headers });
+  const res = await fetch(`${API_BASE}/admin/savings-goals?limit=50`, { headers });
   if (!res.ok) throw new Error('Failed to fetch savings goals');
   const result = await res.json();
   
@@ -150,7 +151,7 @@ const closeSidebarOnMobile = () => {
 // Logout API
 const handleLogout = async () => {
   try {
-    await fetch('http://localhost:8080/admin/logout', {
+    await fetch(`${API_BASE}/admin/logout`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` }
     });

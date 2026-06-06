@@ -18,6 +18,7 @@ import iconActiveSessions from '@/assets/icon-activesessions.svg';
 import LineChart from '@/components/LineChart.vue'
 import PieChart from '@/components/PieChart.vue'
 import { ref, onMounted } from 'vue'
+import { API_BASE } from '../../services/api.js';
 const isSidebarOpen = ref(false);
 const toggleSidebar = () => { isSidebarOpen.value = !isSidebarOpen.value; };
 const closeSidebarOnMobile = () => { if (window.innerWidth < 1024) isSidebarOpen.value = false; };
@@ -53,7 +54,7 @@ const formatDate = (date) => {
 const fetchDashboard = async () => {
   try {
     const token = localStorage.getItem('token')
-    const res = await axios.get('http://localhost:8080/admin/dashboard', {
+    const res = await axios.get(`${API_BASE}/admin/dashboard`, {
       headers: {
         Authorization: `Bearer ${token}`
       }
@@ -109,7 +110,7 @@ const handleLogout = async () => {
   try {
     const token = localStorage.getItem('token')
 
-    await axios.post('http://localhost:8080/admin/logout', {}, {
+    await axios.post(`${API_BASE}/admin/logout`, {}, {
       headers: {
         Authorization: `Bearer ${token}`
       }

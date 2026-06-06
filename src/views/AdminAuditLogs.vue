@@ -13,28 +13,24 @@ import iconHeader from '@/assets/icon-header.svg';
 import iconNotifications2 from '@/assets/icon-notifications2.svg';
 import iconAuditExport from '@/assets/icon-auditExport.svg';
 import iconAuditSearch from '@/assets/icon-auditSearch.svg';
+import { API_BASE } from '../../services/api.js';
 import { ref, onMounted, watch } from "vue";
 
-// Responsive sidebar state
 const isSidebarOpen = ref(false);
 
-// API State
 const isLoading = ref(true);
 const error = ref(null);
 
-// Data State
 const stats = ref({ totalLogs: 0, adminActions: 0, userActions: 0, deleteActions: 0 });
 const logs = ref([]);
 const pagination = ref({ currentPage: 1, totalPages: 1, totalItems: 0, limit: 10 });
 
-// Filters
 const filters = ref({
   search: '',
   actionType: 'All Actions',
   actorRole: 'All Actors'
 });
 
-// API Helpers
 const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
 const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 
@@ -44,10 +40,9 @@ const formatTime = (dateStr) => {
   return isNaN(d.getTime()) ? dateStr : d.toLocaleString();
 };
 
-// Fetch Stats
 const fetchStats = async () => {
   try {
-    const res = await fetch('http://localhost:8080/admin/audit-logs/stats', { headers });
+    const res = await fetch(`${API_BASE}/admin/audit-logs/stats`, { headers });
     if (!res.ok) throw new Error('Failed to fetch stats');
     const result = await res.json();
     if (result.status === 'success') {
@@ -63,7 +58,6 @@ const fetchStats = async () => {
   }
 };
 
-// Fetch Logs (Server-side pagination & filtering)
 const fetchLogs = async () => {
   isLoading.value = true;
   error.value = null;
@@ -76,7 +70,7 @@ const fetchLogs = async () => {
       actorRole: filters.value.actorRole
     });
     
-    const res = await fetch(`http://localhost:8080/admin/audit-logs?${params.toString()}`, { headers });
+    const res = await fetch(`${API_BASE}/admin/audit-logs?${params.toString()}`, { headers });
     if (!res.ok) throw new Error('Failed to fetch logs');
     const result = await res.json();
     
@@ -94,21 +88,19 @@ const fetchLogs = async () => {
   }
 };
 
-// Watch filters to reset page and fetch
+
 watch(filters, () => {
   pagination.value.currentPage = 1;
   fetchLogs();
 }, { deep: true });
 
-// Watch currentPage to fetch
 watch(() => pagination.value.currentPage, () => {
   fetchLogs();
 });
 
-// Export Logs (Downloads CSV securely with JWT)
 const exportLogs = async () => {
   try {
-    const res = await fetch('http://localhost:8080/admin/audit-logs/export', { headers });
+    const res = await fetch(`${API_BASE}/admin/audit-logs/export`, { headers });
     if (!res.ok) throw new Error('Export failed');
     
     const blob = await res.blob();
@@ -131,14 +123,12 @@ onMounted(() => {
   fetchLogs();
 });
 
-// Toggle sidebar
 const toggleSidebar = () => { isSidebarOpen.value = !isSidebarOpen.value; };
 const closeSidebarOnMobile = () => { if (window.innerWidth < 1024) isSidebarOpen.value = false; };
 
-// Logout API
 const handleLogout = async () => {
   try {
-    await fetch('http://localhost:8080/admin/logout', {
+    await fetch(`${API_BASE}/admin/logout`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` }
     });
@@ -151,14 +141,12 @@ const handleLogout = async () => {
   }
 };
 
-// Change page
 const changePage = (page) => {
   if (page >= 1 && page <= pagination.value.totalPages) {
     pagination.value.currentPage = page;
   }
 };
 
-// Get action type class
 const getActionClass = (type) => {
   const classes = { 'Create': 'action-create', 'Update': 'action-update', 'Delete': 'action-delete' };
   return classes[type] || '';

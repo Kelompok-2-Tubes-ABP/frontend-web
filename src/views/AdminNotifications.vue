@@ -15,6 +15,7 @@ import iconNotifAlert from '@/assets/icon-notifAlert.svg';
 import iconNotifFailed from '@/assets/icon-notifFailed.svg';
 import iconNotifUnread from '@/assets/icon-notifUnread.svg';
 import iconNotifCanRetry from '@/assets/icon-notifCanRetry.svg';
+import { API_BASE } from '../../services/api.js';
 import { ref, computed, onMounted } from "vue";
 
 // Responsive sidebar state
@@ -50,7 +51,7 @@ const formatTime = (dateStr) => {
 
 // Fetch Functions
 const fetchStats = async () => {
-  const res = await fetch('http://localhost:8080/admin/alerts/stats', { headers });
+  const res = await fetch(`${API_BASE}/admin/alerts/stats`, { headers });
   if (!res.ok) throw new Error('Failed to fetch alert stats');
   const result = await res.json();
   if (result.status === 'success') {
@@ -64,7 +65,7 @@ const fetchStats = async () => {
 };
 
 const fetchAlerts = async () => {
-  const res = await fetch('http://localhost:8080/admin/alerts?type=system_alert&limit=50', { headers });
+  const res = await fetch(`${API_BASE}/admin/alerts?type=system_alert&limit=50`, { headers });
   if (!res.ok) throw new Error('Failed to fetch alerts');
   const result = await res.json();
   if (result.status === 'success') {
@@ -92,7 +93,7 @@ const fetchAlerts = async () => {
 };
 
 const fetchFailedLogs = async () => {
-  const res = await fetch('http://localhost:8080/admin/alerts?type=failed_action&limit=50', { headers });
+  const res = await fetch(`${API_BASE}/admin/alerts?type=failed_action&limit=50`, { headers });
   if (!res.ok) throw new Error('Failed to fetch failed logs');
   const result = await res.json();
   if (result.status === 'success') {
@@ -124,7 +125,7 @@ const fetchData = async () => {
 // Mark alert as read (Calls your PATCH /admin/alerts/:id/read endpoint)
 const markAsRead = async (id) => {
   try {
-    const res = await fetch(`http://localhost:8080/admin/alerts/${id}/read`, {
+    const res = await fetch(`${API_BASE}/admin/alerts/${id}/read`, {
       method: 'PATCH',
       headers
     });
@@ -155,7 +156,7 @@ const closeSidebarOnMobile = () => { if (window.innerWidth < 1024) isSidebarOpen
 // Logout API
 const handleLogout = async () => {
   try {
-    await fetch('http://localhost:8080/admin/logout', {
+    await fetch(`${API_BASE}/admin/logout`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` }
     });

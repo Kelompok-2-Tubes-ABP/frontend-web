@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted } from "vue";
+import { API_BASE } from '../../services/api.js';
 // Import Icons
 import FintechLogo from '@/assets/fintech-logo.svg';
 import iconDashboard from '@/assets/icon-dashboard.svg';
@@ -41,7 +42,7 @@ const fetchAnalytics = async () => {
   error.value = null;
   try {
     const token = localStorage.getItem('admin_token') || localStorage.getItem('token'); 
-    const response = await fetch('http://localhost:8080/admin/analytics', {
+    const response = await fetch(`${API_BASE}/admin/analytics`, {
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
     });
 
@@ -119,7 +120,7 @@ const closeSidebarOnMobile = () => { if (window.innerWidth < 1024) isSidebarOpen
 const handleLogout = async () => {
   const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
   try {
-    await fetch('http://localhost:8080/admin/logout', {
+    await fetch(`${API_BASE}/admin/logout`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` }
     });
@@ -242,9 +243,7 @@ const handleLogout = async () => {
 </template>
 
 <style scoped>
-/* =========================================
-   LAYOUT & SIDEBAR (Exact match to Budgets)
-   ========================================= */
+
 .layout { display: flex; height: 100vh; font-family: 'Inter', sans-serif; background: #f5f7fb; position: relative; }
 .sidebar { width: 250px; background: #1e3a8a; color: white; display: flex; flex-direction: column; padding: 20px; flex-shrink: 0; }
 .brand { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 100px; margin-top: 20px; }
@@ -255,9 +254,6 @@ const handleLogout = async () => {
 .sidebar nav a:hover, .sidebar nav .active { background: #3b82f6; }
 .logout { display: flex; align-items: center; gap: 10px; margin-top: auto; cursor: pointer; font-size: 20px; }
 
-/* =========================================
-   MAIN CONTENT & HEADER (Exact match to Budgets)
-   ========================================= */
 .main { flex: 1; padding: 0 30px 20px 30px; overflow-y: auto; }
 .header { background-color: #ffffff; border-bottom: 1px solid #e5e7eb; padding: 16px 30px; display: flex; gap: 20px; align-items: center; margin: 0 -30px 24px -30px; }
 .header input { width: 300px; font-size: 24px; padding: 10px; border-radius: 8px; border: 1px solid #ddd; }
@@ -267,9 +263,6 @@ const handleLogout = async () => {
 .avatar { width: 45px; height: 45px; background: #2563eb; color: white; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: bold; font-size: 20px; }
 .username { display: flex; align-items: center; gap: 5px; font-size: 20px; }
 
-/* =========================================
-   PAGE CONTENT STYLING (Figma Match)
-   ========================================= */
 h1 { font-size: 36px; margin: 0 0 8px 0; font-weight: 700; color: #111827; letter-spacing: -0.5px; }
 .subtitle { color: #6b7280; margin: 0 0 30px 0; font-size: 16px; font-weight: 400; }
 
@@ -289,14 +282,10 @@ h1 { font-size: 36px; margin: 0 0 8px 0; font-weight: 700; color: #111827; lette
 .error-state { color: #ef4444; }
 .error-state button { margin-top: 15px; padding: 8px 16px; background: #1e3a8a; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
 
-/* Sidebar Toggle (Mobile) */
 .sidebar-toggle { display: none; position: fixed; left: 0; top: 50%; transform: translateY(-50%); z-index: 1001; background: #1e3a8a; color: white; border: none; border-radius: 0 8px 8px 0; padding: 12px 8px; cursor: pointer; align-items: center; justify-content: center; box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1); transition: all 0.3s ease; width: 36px; height: 48px; }
 .sidebar-toggle.active { left: 250px; border-radius: 8px 0 0 8px; }
 .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.4); z-index: 999; }
 
-/* =========================================
-   RESPONSIVE (Exact match to Budgets page)
-   ========================================= */
 @media (max-width: 1024px) {
   .sidebar-toggle { display: flex; }
   .layout.sidebar-open .sidebar-overlay { display: block; }
