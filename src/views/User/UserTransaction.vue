@@ -230,10 +230,15 @@ const categoryNameMap = {
   entertainment: "Hiburan",
   education: "Edukasi",
   investment: "Investasi",
-  salary: "Gaji",
-  bonus: "Bonus",
-  freelance: "Freelance",
-  gift: "Hadiah",
+
+  // Kategori pemasukan hanya memakai satu kategori:
+  // category yang dikirim ke backend: "pendapatan".
+  income: "Pendapatan",
+  gaji: "Pendapatan",
+  salary: "Pendapatan",
+  pendapatan: "Pendapatan",
+  revenue: "Pendapatan",
+
   other: "Lainnya",
 };
 
@@ -246,10 +251,13 @@ const categoryIconMap = {
   entertainment: iconHiburan,
   education: iconLainnya,
   investment: iconInvestasi,
+
+  income: iconPemasukan,
+  gaji: iconPemasukan,
   salary: iconPemasukan,
-  bonus: iconPemasukan,
-  freelance: iconPemasukan,
-  gift: iconPemasukan,
+  pendapatan: iconPemasukan,
+  revenue: iconPemasukan,
+
   other: iconLainnya,
 };
 
@@ -392,7 +400,6 @@ const getTransactionMonthKey = (item) => {
     }
   }
 
-  // Fallback terakhir ke created_at
   if (item?.created_at && !String(item.created_at).startsWith("0001-01-01")) {
     const date = new Date(item.created_at);
 
@@ -508,12 +515,7 @@ const expenseCategories = [
 ];
 
 const incomeCategories = [
-  { name: "Gaji", value: "salary", icon: iconPemasukan },
-  { name: "Bonus", value: "bonus", icon: iconPemasukan },
-  { name: "Freelance", value: "freelance", icon: iconPemasukan },
-  { name: "Investasi", value: "investment", icon: iconInvestasi },
-  { name: "Hadiah", value: "gift", icon: iconPemasukan },
-  { name: "Lainnya", value: "other", icon: iconLainnya },
+  { name: "Pendapatan", value: "pendapatan", icon: iconPemasukan },
 ];
 
 const categoryList = computed(() => {
@@ -579,10 +581,6 @@ const saveTransaction = async () => {
       description: deskripsi.value.trim(),
       account_id: akun.value.trim(),
       type: transactionType.value,
-
-      // PENTING:
-      // Yang dikirim ke backend bentuknya nama bulan.
-      // Contoh: "June"
       month: selectedMonthFilter.value,
     };
 
@@ -907,11 +905,6 @@ onMounted(() => {
                 {{ getCategoryLabel(item.category) }} •
                 {{ formatTransactionDate(item.date || item.created_at) }}
               </p>
-
-              <p class="month-debug">
-                Month dari BE: {{ item.month || "-" }} |
-                Filter: {{ getTransactionMonthKey(item) || "-" }}
-              </p>
             </div>
           </div>
 
@@ -944,9 +937,6 @@ onMounted(() => {
             Transaksi akan masuk ke bulan:
             <strong>{{ formatSelectedMonthYear }}</strong>
             <br />
-            <small>Payload month ke BE: {{ selectedMonthFilter }}</small>
-            <br />
-            <small>Response BE akan dicocokkan ke: {{ selectedMonthKey }}</small>
           </div>
 
           <div class="amount-box">
@@ -1097,18 +1087,6 @@ onMounted(() => {
                     )
                   }}
                 </h4>
-              </div>
-
-              <div>
-                <p>Month Dari Backend</p>
-
-                <h4>{{ selectedTransaction.month || "-" }}</h4>
-              </div>
-
-              <div>
-                <p>Month Yang Dipakai Filter</p>
-
-                <h4>{{ getTransactionMonthKey(selectedTransaction) || "-" }}</h4>
               </div>
             </div>
 

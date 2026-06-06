@@ -1457,6 +1457,7 @@ onMounted(() => {
   border-radius: 18px;
   padding: 24px 28px;
   box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+  animation: popup 0.2s ease;
 }
 
 .modal-card::-webkit-scrollbar {
@@ -1468,20 +1469,30 @@ onMounted(() => {
   border-radius: 999px;
 }
 
+@keyframes popup {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 12px;
-  margin-bottom: 28px;
+  padding: 0 20px;
+  margin: -24px -24px 23px;
   border-bottom: 1px solid #e5e7eb;
 }
 
 .modal-header h3 {
-  margin: 0;
   color: #1e293b;
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 28px;
 }
 
 .close-btn {
@@ -1531,7 +1542,7 @@ onMounted(() => {
 .modal-section h4 {
   margin: 0 0 10px;
   color: #1e293b;
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 700;
 }
 
@@ -1541,7 +1552,7 @@ onMounted(() => {
   border: 1px solid #cbd5e1;
   border-radius: 12px;
   padding: 0 16px;
-  font-size: 16px;
+  font-size: 18px;
   outline: none;
   box-sizing: border-box;
   background: white;
@@ -1553,7 +1564,7 @@ onMounted(() => {
   border: 1px solid #cbd5e1;
   border-radius: 12px;
   padding: 14px 16px;
-  font-size: 16px;
+  font-size: 18px;
   outline: none;
   box-sizing: border-box;
   font-family: 'Inter', sans-serif;
@@ -1606,7 +1617,7 @@ onMounted(() => {
   border-radius: 12px;
   background: #f1f5f9;
   color: #64748b;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   cursor: pointer;
   transition: 0.2s ease;
@@ -1639,7 +1650,7 @@ onMounted(() => {
   border-radius: 14px;
   background: #4f46e5;
   color: white;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   cursor: pointer;
 }

@@ -1,8 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import UserSideBar from '@/components/UserSideBar.vue'
-import { Calendar } from 'lucide-vue-next'
-
 import iconMakanan from '@/assets/User/icon-makanan.svg'
 import iconTransportasi from '@/assets/User/icon-transportasi.svg'
 import iconHiburan from '@/assets/User/icon-hiburan.svg'
@@ -173,7 +171,7 @@ const deleteSelectedBudget = async () => {
       resetModal()
       resetMonthlyBudgetState()
 
-      await fetchBudgetAllSpending()
+      await fetchMonthlyBudgetSpending()
     }
 
     if (deleteType.value === 'category') {
@@ -186,6 +184,7 @@ const deleteSelectedBudget = async () => {
       })
 
       resetModal()
+      await fetchCategoryBudgets()
     }
 
     deleteType.value = ''
@@ -198,23 +197,64 @@ const deleteSelectedBudget = async () => {
 }
 
 /* =========================
-   DATE
+   MONTH FILTER
 ========================= */
-const currentDate = new Date()
+const currentYear = new Date().getFullYear()
+const today = new Date()
+
+const months = [
+  { label: 'Jan', value: 'January', idLabel: 'Januari', monthNumber: '01' },
+  { label: 'Feb', value: 'February', idLabel: 'Februari', monthNumber: '02' },
+  { label: 'Mar', value: 'March', idLabel: 'Maret', monthNumber: '03' },
+  { label: 'Apr', value: 'April', idLabel: 'April', monthNumber: '04' },
+  { label: 'Mei', value: 'May', idLabel: 'Mei', monthNumber: '05' },
+  { label: 'Jun', value: 'June', idLabel: 'Juni', monthNumber: '06' },
+  { label: 'Jul', value: 'July', idLabel: 'Juli', monthNumber: '07' },
+  { label: 'Agu', value: 'August', idLabel: 'Agustus', monthNumber: '08' },
+  { label: 'Sep', value: 'September', idLabel: 'September', monthNumber: '09' },
+  { label: 'Okt', value: 'October', idLabel: 'Oktober', monthNumber: '10' },
+  { label: 'Nov', value: 'November', idLabel: 'November', monthNumber: '11' },
+  { label: 'Des', value: 'December', idLabel: 'Desember', monthNumber: '12' },
+]
+
+const selectedMonthFilter = ref(
+  new Date().toLocaleString('en-US', { month: 'long' })
+)
+
+const selectedMonthObject = computed(() => {
+  return months.find((month) => month.value === selectedMonthFilter.value)
+})
 
 const currentMonthApi = computed(() => {
-  const year = currentDate.getFullYear()
-  const month = String(currentDate.getMonth() + 1).padStart(2, '0')
+  if (!selectedMonthObject.value) return `${currentYear}-${String(today.getMonth() + 1).padStart(2, '0')}`
 
-  return `${year}-${month}`
+  return `${currentYear}-${selectedMonthObject.value.monthNumber}`
 })
 
 const currentMonthText = computed(() => {
-  return currentDate.toLocaleDateString('id-ID', {
-    month: 'long',
-    year: 'numeric',
-  })
+  if (!selectedMonthObject.value) return `${currentYear}`
+
+  return `${selectedMonthObject.value.idLabel} ${currentYear}`
 })
+
+const changeMonth = async (monthValue) => {
+  if (loadingBudget.value || loadingCategoryBudgets.value) return
+
+  selectedMonthFilter.value = monthValue
+
+  resetBudgetModal()
+  resetModal()
+  closeDeleteAlert()
+  resetMonthlyBudgetState()
+
+  await fetchMonthlyBudgetSpending()
+
+  if (hasMonthlyBudget.value) {
+    await fetchCategoryBudgets()
+  } else {
+    categoryBudgets.value = []
+  }
+}
 
 /* =========================
    CATEGORY MAP
@@ -292,6 +332,12 @@ const budgetPercentage = computed(() => {
   return Math.min(Math.round(percent), 100)
 })
 
+const budgetRealPercentage = computed(() => {
+  if (!totalBudget.value || totalBudget.value <= 0) return 0
+
+  return Math.round(Number(percentageUsed.value || 0))
+})
+
 const budgetStatusClass = computed(() => {
   if (statusBudget.value === 'over_budget') return 'danger'
   if (statusBudget.value === 'warning') return 'warning'
@@ -324,35 +370,23 @@ const budgetInfoText = computed(() => {
   return 'Pengeluaranmu masih aman 👍'
 })
 
-const remainingDays = computed(() => {
-  const now = new Date()
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-
-  return Math.max(lastDay - now.getDate(), 0)
-})
-
 /* =========================
    HELPER CATEGORY BUDGET CARD
 ========================= */
 const getCategoryBudgetPercentage = (item) => {
-  const limit = Number(item.limit || 0)
-  const spent = Number(item.spent || 0)
+  const percent = Number(item.percentage_used || 0)
 
-  if (limit <= 0) return 0
-
-  return Math.min(Math.round((spent / limit) * 100), 100)
+  return Math.min(Math.round(percent), 100)
 }
 
 const getCategoryBudgetRealPercentage = (item) => {
-  const limit = Number(item.limit || 0)
-  const spent = Number(item.spent || 0)
-
-  if (limit <= 0) return 0
-
-  return Math.round((spent / limit) * 100)
+  return Math.round(Number(item.percentage_used || 0))
 }
 
 const getCategoryBudgetStatusClass = (item) => {
+  if (item.status === 'over_budget') return 'danger'
+  if (item.status === 'warning') return 'warning'
+
   const percent = getCategoryBudgetRealPercentage(item)
 
   if (percent > 100) return 'danger'
@@ -362,6 +396,9 @@ const getCategoryBudgetStatusClass = (item) => {
 }
 
 const getCategoryBudgetStatusText = (item) => {
+  if (item.status === 'over_budget') return '● Melebihi'
+  if (item.status === 'warning') return '● Peringatan'
+
   const percent = getCategoryBudgetRealPercentage(item)
 
   if (percent > 100) return '● Melebihi'
@@ -371,7 +408,7 @@ const getCategoryBudgetStatusText = (item) => {
 }
 
 const getCategoryBudgetFooterText = (item) => {
-  const remaining = Number(item.limit || 0) - Number(item.spent || 0)
+  const remaining = Number(item.remaining || 0)
 
   if (remaining < 0) {
     return `Lebih Rp ${formatRupiahDisplay(Math.abs(remaining))}`
@@ -404,52 +441,74 @@ const selectBudgetCategory = (category) => {
 }
 
 /* =========================
-   FETCH BUDGET BULANAN
+   NORMALIZE CATEGORY RESPONSE
 ========================= */
-const fetchBudgetAllSpending = async () => {
+const normalizeCategoryBudget = (item) => {
+  const budget = item?.budget || {}
+
+  return {
+    id: budget.id || '',
+    user_id: budget.user_id || '',
+    month: budget.month || '',
+    category: budget.category || '',
+    limit: Number(budget.limit || 0),
+    spent: Number(budget.spent || 0),
+    created_at: budget.created_at || '',
+    updated_at: budget.updated_at || '',
+    percentage_used: Number(item?.percentage_used || 0),
+    remaining: Number(item?.remaining || 0),
+    status: item?.status || 'safe',
+    notes: budget.notes || '',
+  }
+}
+
+/* =========================
+   FETCH BUDGET BULANAN BY MONTH
+   GET /budget/by-month/2026-06/spending
+========================= */
+const fetchMonthlyBudgetSpending = async () => {
   loadingBudget.value = true
 
   try {
     const token = localStorage.getItem('token')
 
-    const response = await fetch(`${API_BASE}/budget/all-spending`, {
-      method: 'GET',
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    })
+    const response = await fetch(
+      `${API_BASE}/budget/by-month/${currentMonthApi.value}/spending`,
+      {
+        method: 'GET',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      }
+    )
 
-    const data = await response.json()
-    console.log('Budget all spending:', data)
+    const text = await response.text()
+    const data = text ? JSON.parse(text) : {}
+
+    console.log('Budget by month spending:', data)
 
     if (!response.ok) {
       throw new Error(
         data.detail ||
           data.error ||
           data.message ||
-          'Gagal mengambil data budget'
+          'Gagal mengambil data budget bulanan'
       )
     }
 
-    const budgets = Array.isArray(data) ? data : []
-
-    const currentBudget = budgets.find((item) => {
-      return item.budget?.month === currentMonthApi.value
-    })
-
-    if (!currentBudget) {
+    if (!data || !data.budget) {
       resetMonthlyBudgetState()
       return
     }
 
-    currentBudgetId.value = currentBudget.budget?.id || ''
-    totalBudget.value = currentBudget.budget?.limit || 0
-    totalTerpakai.value = currentBudget.spending || 0
-    totalSisa.value = currentBudget.remaining || 0
-    percentageUsed.value = currentBudget.percentage_used || 0
-    statusBudget.value = currentBudget.status || 'safe'
+    currentBudgetId.value = data.budget.id || ''
+    totalBudget.value = Number(data.budget.limit || 0)
+    totalTerpakai.value = Number(data.spending || 0)
+    totalSisa.value = Number(data.remaining || 0)
+    percentageUsed.value = Number(data.percentage_used || 0)
+    statusBudget.value = data.status || 'safe'
   } catch (error) {
-    console.error('Gagal mengambil budget all spending:', error)
+    console.error('Gagal mengambil budget bulanan:', error)
     resetMonthlyBudgetState()
   } finally {
     loadingBudget.value = false
@@ -457,7 +516,8 @@ const fetchBudgetAllSpending = async () => {
 }
 
 /* =========================
-   FETCH CATEGORY BUDGET
+   FETCH CATEGORY BUDGET BY MONTH
+   GET /budget/category/by-month/2026-06/all
 ========================= */
 const fetchCategoryBudgets = async () => {
   if (!hasMonthlyBudget.value) {
@@ -471,15 +531,20 @@ const fetchCategoryBudgets = async () => {
   try {
     const token = localStorage.getItem('token')
 
-    const response = await fetch(`${API_BASE}/budget/category`, {
-      method: 'GET',
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    })
+    const response = await fetch(
+      `${API_BASE}/budget/category/by-month/${currentMonthApi.value}/all`,
+      {
+        method: 'GET',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      }
+    )
 
-    const data = await response.json()
-    console.log('Category budgets:', data)
+    const text = await response.text()
+    const data = text ? JSON.parse(text) : []
+
+    console.log('Category budgets by month:', data)
 
     if (!response.ok) {
       throw new Error(
@@ -492,9 +557,7 @@ const fetchCategoryBudgets = async () => {
 
     const budgets = Array.isArray(data) ? data : []
 
-    categoryBudgets.value = budgets.filter((item) => {
-      return item.month === currentMonthApi.value
-    })
+    categoryBudgets.value = budgets.map(normalizeCategoryBudget)
   } catch (error) {
     console.error('Gagal mengambil budget kategori:', error)
     categoryBudgetListError.value =
@@ -593,8 +656,9 @@ const saveMonthlyBudget = async () => {
       ? 'Budget bulanan berhasil diedit'
       : 'Budget bulanan berhasil disimpan'
 
-    await fetchBudgetAllSpending()
+    await fetchMonthlyBudgetSpending()
     await fetchCategoryBudgets()
+
     resetBudgetModal()
   } catch (error) {
     console.error('Gagal menyimpan budget:', error)
@@ -687,7 +751,7 @@ const saveCategoryBudget = async () => {
     return
   }
 
-  if (limitValue >= totalBudget.value) {
+  if (limitValue > totalBudget.value) {
     categoryBudgetError.value = 'Limit budget kategori tidak boleh melebihi limit budget bulanan'
     return
   }
@@ -740,6 +804,7 @@ const saveCategoryBudget = async () => {
       ? 'Budget kategori berhasil diedit'
       : 'Budget kategori berhasil ditambahkan'
 
+    await fetchMonthlyBudgetSpending()
     await fetchCategoryBudgets()
 
     setTimeout(() => {
@@ -755,7 +820,7 @@ const saveCategoryBudget = async () => {
 }
 
 onMounted(async () => {
-  await fetchBudgetAllSpending()
+  await fetchMonthlyBudgetSpending()
 
   if (hasMonthlyBudget.value) {
     await fetchCategoryBudgets()
@@ -785,12 +850,16 @@ onMounted(async () => {
               </button>
             </div>
 
-            <div class="date-row">
-              <span>
-                <Calendar :size="30" />
-              </span>
-
-              <p>{{ currentMonthText }}</p>
+            <div class="month-row">
+              <button
+                v-for="month in months"
+                :key="month.value"
+                class="month-btn"
+                :class="{ active: selectedMonthFilter === month.value }"
+                @click="changeMonth(month.value)"
+              >
+                {{ month.label }}
+              </button>
             </div>
           </div>
         </div>
@@ -823,7 +892,7 @@ onMounted(async () => {
           </div>
 
           <div class="percentage">
-            {{ budgetPercentage }}%
+            {{ budgetRealPercentage }}%
           </div>
 
           <div class="progress-bar">
@@ -835,8 +904,8 @@ onMounted(async () => {
           </div>
 
           <div class="budget-footer">
-            <span>{{ budgetPercentage }}% terpakai</span>
-            <span>{{ remainingDays }} hari tersisa</span>
+              <span>Sisa Rp {{ formatRupiahDisplay(totalSisa) }}</span>
+              <span>{{ budgetRealPercentage }}% terpakai</span>
           </div>
         </section>
 
@@ -1218,12 +1287,39 @@ onMounted(async () => {
   margin: 0;
 }
 
-.date-row {
+.month-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: #64748b;
-  font-size: 20px;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 30px;
+  margin-bottom: 16px;
+}
+
+.month-btn {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #2563eb;
+  padding: 9px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 700;
+  transition: 0.2s ease;
+}
+
+.month-btn:hover {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #93c5fd;
+  transform: translateY(-1px);
+}
+
+.month-btn.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
 }
 
 .add-btn {
@@ -1390,8 +1486,14 @@ onMounted(async () => {
   margin-top: 10px;
   display: flex;
   justify-content: space-between;
+  gap: 14px;
   font-size: 20px;
   color: #94a3b8;
+}
+
+.footer-left {
+  display: flex;
+  gap: 14px;
 }
 
 /* INFO BOX */
