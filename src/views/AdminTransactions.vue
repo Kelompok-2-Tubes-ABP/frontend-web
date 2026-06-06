@@ -11,9 +11,10 @@ import iconAuditLogs from '@/assets/icon-audit-logs.svg';
 import iconLogout from '@/assets/icon-logout.svg';
 import iconHeader from '@/assets/icon-header.svg';
 import iconNotifications2 from '@/assets/icon-notifications2.svg';
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
+import axios from 'axios';
 const currentPage = ref(1);
-const perPage = 8;
+const perPage = 10;
 
 
 const handleLogout = async () => {
@@ -36,14 +37,58 @@ const handleLogout = async () => {
 }
 
 // Data awal
-const transactions = ref([
-  {    id: 'TRX001',    user: 'John Doe',    category: 'Investment',    amount: 5000,    status: 'Completed',    datetime: '2026-03-14 10:23:00'  },
-  {    id: 'TRX002',    user: 'Jane Smith',    category: 'Transfer',    amount: 2500,    status: 'Completed',    datetime: '2026-03-14 09:15:00'  },
-  {    id: 'TRX003',    user: 'Mike Johnson',    category: 'Bill Payment',    amount: 850,    status: 'Pending',    datetime: '2026-03-13 16:30:00'  },
-  {    id: 'TRX004',    user: 'Sarah Wilson',    category: 'Investment',    amount: 7200,    status: 'Completed',    datetime: '2026-03-13 14:45:00'},
-  {    id: 'TRX005',    user: 'Tom Brown',    category: 'Shopping',    amount: 320,    status: 'Failed',    datetime: '2026-03-13 11:20:00'},
-  {    id: 'TRX006',    user: 'Emily Davis',    category: 'Transfer',    amount: 1500,    status: 'Completed',    datetime: '2026-03-12 15:15:00'},
-])
+const transactions = ref([])
+
+
+const fetchAllTransactions = async () => {
+  try {
+    const token = localStorage.getItem('token')
+
+    const res = await axios.get('http://localhost:8080/admin/transactions/all', {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+
+    console.log('Transaction', res.data.data)
+    transactions.value = res.data.data.map(trx => ({
+      id: trx.id,
+      user: trx.user_name || 'Unknown User', // ✅ BENAR
+      category: (trx.category || '').toLowerCase(),
+      amount: trx.amount,
+      description: trx.description || '-', // ✅ TAMBAH INI
+      status: 'Completed',
+      datetime: trx.date
+    }))
+
+  } catch (err) {
+    console.error('Fetch transactions error:', err)
+  }
+}
+
+const fetchRecentTransactions = async () => {
+  try {
+    const token = localStorage.getItem('token')
+
+    const res = await axios.get('http://localhost:8080/admin/transactions/recent', {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+    console.log('Transaction', res.data.data)
+    transactions.value = res.data.data.map(trx => ({
+      id: trx.id,
+      user: trx.user_name || 'Unknown User', // ✅ BENAR
+      category: (trx.category || '').toLowerCase(),
+      amount: trx.amount,
+      description: trx.description || '-', // ✅ TAMBAH INI
+      status: 'Completed',
+      datetime: trx.date
+    }))
+  } catch (err) {
+    console.error('Fetch recent transactions error:', err)
+  }
+}
 
 // FILTER STATE
 const search = ref('')
@@ -51,7 +96,14 @@ const selectedCategory = ref('All Categories')
 const selectedStatus = ref('All Status')
 
 // OPTIONS
-const categories = ['All Categories', 'Investment', 'Transfer', 'Bill Payment', 'Shopping']
+const categories = [
+  'All Categories',
+  'food',
+  'shopping',
+  'transportasi',
+  'income',
+  'expense'
+]
 const statuses = ['All Status', 'Completed', 'Pending', 'Failed']
 
 // 🔥 FILTER + SORT
@@ -61,8 +113,8 @@ const filteredTransactions = computed(() => {
       // SEARCH
       const keyword = search.value.toLowerCase()
       const matchSearch =
-        trx.id.toLowerCase().includes(keyword) ||
-        trx.user.toLowerCase().includes(keyword)
+        (trx.id || '').toLowerCase().includes(keyword) ||
+        (trx.user || '').toLowerCase().includes(keyword)
 
       // CATEGORY
       const matchCategory =
@@ -97,6 +149,12 @@ const filteredTransactions = computed(() => {
     watch([search, selectedCategory, selectedStatus], () => {
       currentPage.value = 1
     })
+
+onMounted(() => {
+  fetchAllTransactions()
+  // atau kalau mau recent:
+  fetchRecentTransactions()
+})
 </script>
 
 <template>
@@ -205,37 +263,39 @@ const filteredTransactions = computed(() => {
               <th>User</th>
               <th>Category</th>
               <th>Amount</th>
+              <th>Description</th>
               <th>Status</th>
               <th>Date & Time</th>
             </tr>
           </thead>
 
-          <tbody>
-            <tr v-for="trx in paginatedTransactions" :key="trx.id">
-              <td>{{ trx.id }}</td>
-              <td>{{ trx.user }}</td>
-              <td>
-                <span
-                  class="category-badge"
-                  :class="{
-                    investment: trx.category === 'Investment',
-                    transfer: trx.category === 'Transfer',
-                    'bill-payment': trx.category === 'Bill Payment',
-                    shopping: trx.category === 'Shopping'
-                  }"
-                >
-                  {{ trx.category }}
-                </span>
-              </td>
-              <td>${{ trx.amount.toLocaleString() }}</td>
-              <td>
-                <span :class="['badge', trx.status.toLowerCase()]">
-                  {{ trx.status }}
-                </span>
-              </td>
-              <td>{{ formatDate(trx.datetime) }}</td>
-            </tr>
-          </tbody>
+        <tbody>
+          <tr v-for="trx in paginatedTransactions" :key="trx.id">
+            <td>{{ trx.id }}</td>
+            <td>{{ trx.user }}</td>
+
+            <td>
+              <span class="category-badge" :class="trx.category"
+              >
+                {{ trx.category }}
+              </span>
+            </td>
+
+            <td>${{ trx.amount.toLocaleString() }}</td>
+
+            <!-- ✅ INI DESCRIPTION -->
+            <td>{{ trx.description }}</td>
+
+            <!-- STATUS -->
+            <td>
+              <span :class="['badge', trx.status.toLowerCase()]">
+                {{ trx.status }}
+              </span>
+            </td>
+
+            <td>{{ formatDate(trx.datetime) }}</td>
+          </tr>
+        </tbody>
         </table>
 
         <div class="footer">
@@ -577,5 +637,24 @@ td {
   background: #2563eb;
   color: white;
   border: none;
+}
+.food {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.income {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.expense {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.transportasi {
+  background: #e0e7ff;
+  color: #3730a3;
 }
 </style>
