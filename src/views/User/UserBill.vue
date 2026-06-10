@@ -1348,7 +1348,7 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 86px;
+  padding-bottom: 87px;
 }
 
 .top-header h1 {

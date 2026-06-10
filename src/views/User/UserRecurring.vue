@@ -1205,7 +1205,7 @@ onMounted(() => {
   width: calc(100% - 300px);
   display: flex;
   flex-direction: column;
-  padding: 10px 28px;
+  padding: 11px 28px;
   background: rgba(245, 246, 250, 0.9);
   backdrop-filter: blur(10px);
   z-index: 1000;

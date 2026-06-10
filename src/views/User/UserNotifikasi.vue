@@ -8,12 +8,27 @@ import iconTrendingDown from '@/assets/User/icon-TrendingDown.svg'
 import iconGoal from '@/assets/User/icon-goals.svg'
 import iconNotifications from '@/assets/icon-notifications.svg'
 
-const API_BASE = 'http://localhost:8080/api/notifications/feed'
+const API_BASE = 'http://localhost:8000/api/notifications/feed'
 const token = localStorage.getItem('token') || sessionStorage.getItem('token')
 
 const notificationGroups = ref([])
 const isLoading = ref(true)
 
+
+
+const formatRupiah = (value) => {
+  if (!value) return "0";
+  return new Intl.NumberFormat("id-ID").format(Math.round(value));
+};
+
+const formatAmountInDescription = (message) => {
+  if (!message) return ''
+
+  return String(message).replace(/(?:Rp\s*)?(\d{4,})/g, (match, number) => {
+    const formatted = formatRupiah(Number(number))
+    return `Rp ${formatted}`
+  })
+}
 
 const getNotifStyle = (type) => {
   switch (type) {
@@ -95,12 +110,12 @@ const fetchNotifications = async () => {
     
     if (!response.ok) throw new Error('Failed to fetch')
     const data = await response.json()
-    
+    console.log('Fetched notifications:', data.notifications)
   
     const mappedNotifications = data.notifications.map(notif => ({
       id: notif.id,
       title: notif.title,
-      desc: notif.message,
+      desc: formatAmountInDescription(notif.message),
       time: formatTime(notif.created_at),
       unread: !notif.is_read,
       link: notif.link,
@@ -291,7 +306,7 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding-bottom: 66px;
+  padding-bottom: 57px;
 }
 
 .top-header h1 {
@@ -304,7 +319,7 @@ onMounted(() => {
 .top-header p {
   margin: 8px 0 0;
   color: #64748b;
-  font-size: 13px;
+  font-size: 20px;
   font-weight: 500;
 }
 
@@ -316,11 +331,12 @@ onMounted(() => {
   border-radius: 10px;
   background: transparent;
   color: #4f46e5;
-  font-size: 13px;
+  font-size: 20px;
   font-weight: 700;
   cursor: pointer;
   margin-right: 60px;
   transition: all 0.2s ease;
+  
 }
 
 .read-btn:hover:not(:disabled) {
@@ -341,7 +357,7 @@ onMounted(() => {
 .notification-group h3 {
   margin: 0 0 12px;
   color: #64748b;
-  font-size: 13px;
+  font-size: 20px;
   font-weight: 600;
 }
 
@@ -386,15 +402,15 @@ onMounted(() => {
 
 /* ICON */
 .notif-icon {
-  width: 34px;
-  height: 34px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
 
   display: flex;
   justify-content: center;
   align-items: center;
 
-  font-size: 14px;
+  font-size: 200px;
   font-weight: 700;
   flex-shrink: 0;
 }
@@ -425,8 +441,8 @@ onMounted(() => {
 }
 
 .notif-svg-icon {
-  width: 16px;
-  height: 16px;
+  width: 28px;
+  height: 28px;
   object-fit: contain;
 }
 
@@ -446,20 +462,20 @@ onMounted(() => {
 .notif-header h4 {
   margin: 0;
   color: #1e293b;
-  font-size: 14px;
+  font-size: 24px;
   font-weight: 700;
 }
 
 .notif-content p {
   margin: 6px 0;
   color: #64748b;
-  font-size: 13px;
+  font-size: 20px;
   line-height: 1.4;
 }
 
 .notif-content small {
   color: #64748b;
-  font-size: 11px;
+  font-size: 18px;
   font-weight: 500;
 }
 
@@ -486,7 +502,7 @@ onMounted(() => {
   text-align: center;
   padding: 60px 20px;
   color: #64748b;
-  font-size: 14px;
+  font-size: 20px;
   background: white;
   border-radius: 20px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);

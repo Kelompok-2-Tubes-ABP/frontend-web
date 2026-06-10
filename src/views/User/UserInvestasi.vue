@@ -528,7 +528,7 @@ const updateCurrentPrice = async () => {
     console.log('Update price payload:', payload)
 
     const response = await fetch(`${API_BASE_URL}/investment/${selectedInvestment.value.id}/price`, {
-      method: 'PUT',
+      method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
         ...(token && {
@@ -538,18 +538,35 @@ const updateCurrentPrice = async () => {
       body: JSON.stringify(payload)
     })
 
-    const data = await response.json()
+    const text = await response.text()
+    let data = null
 
-    if (!response.ok) {
-      throw new Error(data.message || data.error || 'Gagal update current price')
+    try {
+      data = text ? JSON.parse(text) : null
+    } catch (err) {
+      console.warn('Response update price bukan JSON:', text)
     }
 
-    updatePriceSuccess.value = 'Current price berhasil diupdate'
+    if (!response.ok) {
+      throw new Error(
+        data?.message ||
+        data?.error ||
+        data?.detail ||
+        text ||
+        'Gagal update current price'
+      )
+    }
+
+    updatePriceSuccess.value =
+      data?.message ||
+      data?.Message ||
+      'Current price berhasil diupdate'
 
     await Promise.all([
       fetchInvestmentDetail(selectedInvestment.value.id),
       fetchPortfolio()
     ])
+    showDetailModal.value = false
   } catch (error) {
     console.error('Update current price error:', error)
     updatePriceError.value = error.message

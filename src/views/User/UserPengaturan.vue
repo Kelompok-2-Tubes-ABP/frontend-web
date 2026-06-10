@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import UserSideBar from '@/components/UserSideBar.vue'
 import { API_BASE } from '../../../services/api.js'
 import iconEditProfile from '@/assets/User/icon-editporfile.svg'
@@ -7,32 +7,97 @@ import axios from 'axios'
 
 const token = localStorage.getItem('token') || sessionStorage.getItem('token')
 
-// Profile data
-const profile = ref({ username: '', email: '' })
+/* =========================
+   PROFILE DATA
+========================= */
+const profile = ref({
+  username: '',
+  email: '',
+  role: '',
+  created_at: '',
+})
+
 const isLoading = ref(true)
 
-// Modal state
+const profileInitial = computed(() => {
+  const name = profile.value.username || 'User'
+  return name.charAt(0).toUpperCase()
+})
+
+const formattedJoinDate = computed(() => {
+  return formatDate(profile.value.created_at)
+})
+
+/* =========================
+   MODAL STATE
+========================= */
 const showEditProfileModal = ref(false)
 const showChangePasswordModal = ref(false)
-const editProfileForm = ref({ username: '', email: '' })
-const passwordForm = ref({ current_password: '', new_password: '', confirm_password: '' })
+
+const editProfileForm = ref({
+  username: '',
+  email: '',
+})
+
+const passwordForm = ref({
+  current_password: '',
+  new_password: '',
+  confirm_password: '',
+})
+
 const profileError = ref('')
 const profileSuccess = ref('')
 const passwordError = ref('')
 const passwordSuccess = ref('')
 const isUpdating = ref(false)
 
-// Fetch profile
+/* =========================
+   FORMAT DATE
+========================= */
+const formatDate = (value) => {
+  if (
+    !value ||
+    value === '0001-01-01T00:00:00Z' ||
+    String(value).startsWith('0001-01-01')
+  ) {
+    return '-'
+  }
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return '-'
+  }
+
+  return date.toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
+/* =========================
+   FETCH PROFILE
+========================= */
 const fetchProfile = async () => {
   isLoading.value = true
+
   try {
     const res = await axios.get(`${API_BASE}/profile/`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     })
-    const data = res.data.Message || res.data.message
+
+    const data = res.data.Message || res.data.message || res.data.user || {}
+
+    console.log('Fetched profile data:', data)
+
     profile.value = {
       username: data.username || '',
-      email: data.email || ''
+      email: data.email || '',
+      role: data.role || '-',
+      created_at: data.created_at || data.CreatedAt || '',
     }
   } catch (err) {
     console.error('Error fetching profile:', err)
@@ -41,86 +106,169 @@ const fetchProfile = async () => {
   }
 }
 
-// Edit Profile
+/* =========================
+   EDIT PROFILE
+========================= */
 const openEditProfile = () => {
-  editProfileForm.value = { username: profile.value.username, email: profile.value.email }
+  editProfileForm.value = {
+    username: profile.value.username,
+    email: profile.value.email,
+  }
+
   profileError.value = ''
   profileSuccess.value = ''
   showEditProfileModal.value = true
 }
 
+const closeEditProfileModal = () => {
+  showEditProfileModal.value = false
+  profileError.value = ''
+  profileSuccess.value = ''
+}
+
 const submitEditProfile = async () => {
   profileError.value = ''
   profileSuccess.value = ''
+
+  if (!editProfileForm.value.username.trim()) {
+    profileError.value = 'Username wajib diisi'
+    return
+  }
+
+  if (!editProfileForm.value.email.trim()) {
+    profileError.value = 'Email wajib diisi'
+    return
+  }
+
   isUpdating.value = true
+
   try {
     const updates = {}
-    if (editProfileForm.value.username && editProfileForm.value.username !== profile.value.username) {
-      updates.username = editProfileForm.value.username
+
+    if (
+      editProfileForm.value.username.trim() &&
+      editProfileForm.value.username.trim() !== profile.value.username
+    ) {
+      updates.username = editProfileForm.value.username.trim()
     }
-    if (editProfileForm.value.email && editProfileForm.value.email !== profile.value.email) {
-      updates.email = editProfileForm.value.email
+
+    if (
+      editProfileForm.value.email.trim() &&
+      editProfileForm.value.email.trim() !== profile.value.email
+    ) {
+      updates.email = editProfileForm.value.email.trim()
     }
+
     if (Object.keys(updates).length === 0) {
       profileError.value = 'Tidak ada perubahan'
       isUpdating.value = false
       return
     }
+
     const res = await axios.patch(`${API_BASE}/profile/`, updates, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     })
+
+    const updatedUser = res.data.user || res.data.Message || res.data.message || {}
+
     profile.value = {
-      username: res.data.user?.username || editProfileForm.value.username,
-      email: res.data.user?.email || editProfileForm.value.email
+      username: updatedUser.username || editProfileForm.value.username,
+      email: updatedUser.email || editProfileForm.value.email,
+      role: updatedUser.role || profile.value.role,
+      created_at: updatedUser.created_at || profile.value.created_at,
     }
+    window.dispatchEvent(new Event("sidebar-updated"))
     profileSuccess.value = 'Profil berhasil diperbarui!'
-    setTimeout(() => { showEditProfileModal.value = false; profileSuccess.value = '' }, 1500)
+
+    setTimeout(() => {
+      closeEditProfileModal()
+      fetchProfile(true)
+    }, 1500)
   } catch (err) {
-    profileError.value = err.response?.data?.error || err.response?.data?.Error || 'Gagal memperbarui profil'
+    profileError.value =
+      err.response?.data?.error ||
+      err.response?.data?.Error ||
+      err.response?.data?.message ||
+      'Gagal memperbarui profil'
   } finally {
     isUpdating.value = false
   }
 }
 
-// Change Password
+/* =========================
+   CHANGE PASSWORD
+========================= */
 const openChangePassword = () => {
-  passwordForm.value = { current_password: '', new_password: '', confirm_password: '' }
+  passwordForm.value = {
+    current_password: '',
+    new_password: '',
+    confirm_password: '',
+  }
+
   passwordError.value = ''
   passwordSuccess.value = ''
   showChangePasswordModal.value = true
 }
 
+const closeChangePasswordModal = () => {
+  showChangePasswordModal.value = false
+  passwordError.value = ''
+  passwordSuccess.value = ''
+}
+
 const submitChangePassword = async () => {
   passwordError.value = ''
   passwordSuccess.value = ''
+
   if (!passwordForm.value.current_password || !passwordForm.value.new_password) {
     passwordError.value = 'Semua field wajib diisi'
     return
   }
+
   if (passwordForm.value.new_password.length < 8) {
     passwordError.value = 'Password baru minimal 8 karakter'
     return
   }
+
   if (!/[A-Z]/.test(passwordForm.value.new_password)) {
     passwordError.value = 'Password baru harus mengandung minimal 1 huruf besar'
     return
   }
+
   if (passwordForm.value.new_password !== passwordForm.value.confirm_password) {
     passwordError.value = 'Password baru tidak sama'
     return
   }
+
   isUpdating.value = true
+
   try {
-    await axios.post(`${API_BASE}/auth/password/change`, {
-      current_password: passwordForm.value.current_password,
-      new_password: passwordForm.value.new_password
-    }, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    await axios.post(
+      `${API_BASE}/profile/change-password`,
+      {
+        current_password: passwordForm.value.current_password,
+        new_password: passwordForm.value.new_password,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    )
+
     passwordSuccess.value = 'Password berhasil diubah!'
-    setTimeout(() => { showChangePasswordModal.value = false; passwordSuccess.value = '' }, 1500)
+
+    setTimeout(() => {
+      closeChangePasswordModal()
+    }, 1500)
   } catch (err) {
-    passwordError.value = err.response?.data?.error || 'Gagal mengubah password'
+    passwordError.value =
+      err.response?.data?.error ||
+      err.response?.data?.Error ||
+      err.response?.data?.message ||
+      'Gagal mengubah password'
   } finally {
     isUpdating.value = false
   }
@@ -144,23 +292,27 @@ onMounted(fetchProfile)
         <!-- AKUN -->
         <section class="setting-card">
           <h3>Akun</h3>
+
           <div class="setting-list">
             <button class="setting-item" @click="openEditProfile">
               <div class="setting-left">
                 <div class="setting-icon">
                   <img :src="iconEditProfile" alt="Edit Profile" />
                 </div>
+
                 <div>
                   <h4>Edit Profil</h4>
                   <p>Ubah informasi pribadi kamu</p>
                 </div>
               </div>
             </button>
+
             <button class="setting-item" @click="openChangePassword">
               <div class="setting-left">
                 <div class="setting-icon">
                   <img :src="iconEditProfile" alt="Ganti Password" />
                 </div>
+
                 <div>
                   <h4>Ganti Password</h4>
                   <p>Perbarui password akun kamu</p>
@@ -173,17 +325,37 @@ onMounted(fetchProfile)
         <!-- PREVIEW DATA -->
         <section class="setting-card">
           <h3>Data Profil</h3>
-          <div class="setting-list compact">
+
+          <div v-if="isLoading" class="loading-text">
+            Mengambil data profil...
+          </div>
+
+          <div v-else class="setting-list compact">
             <div class="setting-item no-icon">
               <div>
                 <h4>Username</h4>
-                <p>{{ profile.username || '...' }}</p>
+                <p>{{ profile.username || '-' }}</p>
               </div>
             </div>
+
             <div class="setting-item no-icon">
               <div>
                 <h4>Email</h4>
-                <p>{{ profile.email || '...' }}</p>
+                <p>{{ profile.email || '-' }}</p>
+              </div>
+            </div>
+
+            <div class="setting-item no-icon">
+              <div>
+                <h4>Role</h4>
+                <p>{{ profile.role || '-' }}</p>
+              </div>
+            </div>
+
+            <div class="setting-item no-icon">
+              <div>
+                <h4>Bergabung Sejak</h4>
+                <p>{{ formattedJoinDate }}</p>
               </div>
             </div>
           </div>
@@ -192,34 +364,40 @@ onMounted(fetchProfile)
         <!-- TENTANG -->
         <section class="setting-card">
           <h3>Tentang</h3>
+
           <div class="setting-list compact">
             <div class="setting-item no-icon">
               <div class="setting-left">
                 <div class="setting-icon">
                   <img :src="iconEditProfile" alt="Versi App" />
                 </div>
+
                 <div>
                   <h4>Versi App</h4>
                   <p>v1.0.0</p>
                 </div>
               </div>
             </div>
+
             <div class="setting-item no-icon">
               <div class="setting-left">
                 <div class="setting-icon">
                   <img :src="iconEditProfile" alt="Privacy Policy" />
                 </div>
+
                 <div>
                   <h4>Privacy Policy</h4>
                   <p>Kebijakan privasi kami</p>
                 </div>
               </div>
             </div>
+
             <div class="setting-item no-icon">
               <div class="setting-left">
                 <div class="setting-icon">
                   <img :src="iconEditProfile" alt="Syarat & Ketentuan" />
                 </div>
+
                 <div>
                   <h4>Syarat & Ketentuan</h4>
                   <p>Ketentuan penggunaan</p>
@@ -228,28 +406,79 @@ onMounted(fetchProfile)
             </div>
           </div>
         </section>
-
       </main>
     </div>
 
     <!-- EDIT PROFILE MODAL -->
     <Transition name="modal">
-      <div v-if="showEditProfileModal" class="modal-overlay" @click.self="showEditProfileModal = false">
-        <div class="modal">
-          <h3>Edit Profil</h3>
+      <div
+        v-if="showEditProfileModal"
+        class="modal-overlay"
+        @click.self="closeEditProfileModal"
+      >
+        <div class="modal profile-modal">
+          <div class="modal-profile-header">
+            <div class="profile-avatar">
+              {{ profileInitial }}
+            </div>
+
+            <h3>{{ profile.username || 'User' }}</h3>
+            <p>Edit informasi profil kamu</p>
+          </div>
+
+          <div class="profile-info-list">
+            <div class="profile-info-item">
+              <span>Role</span>
+              <strong>{{ profile.role || '-' }}</strong>
+            </div>
+
+            <div class="profile-info-item">
+              <span>Email</span>
+              <strong>{{ profile.email || '-' }}</strong>
+            </div>
+
+            <div class="profile-info-item">
+              <span>Bergabung Sejak</span>
+              <strong>{{ formattedJoinDate }}</strong>
+            </div>
+          </div>
+
           <div class="modal-field">
             <label>Username</label>
-            <input v-model="editProfileForm.username" type="text" placeholder="Username" />
+            <input
+              v-model="editProfileForm.username"
+              type="text"
+              placeholder="Username"
+            />
           </div>
+
           <div class="modal-field">
             <label>Email</label>
-            <input v-model="editProfileForm.email" type="email" placeholder="Email" />
+            <input
+              v-model="editProfileForm.email"
+              type="email"
+              placeholder="Email"
+            />
           </div>
-          <div v-if="profileError" class="modal-error">{{ profileError }}</div>
-          <div v-if="profileSuccess" class="modal-success">{{ profileSuccess }}</div>
+
+          <div v-if="profileError" class="modal-error">
+            {{ profileError }}
+          </div>
+
+          <div v-if="profileSuccess" class="modal-success">
+            {{ profileSuccess }}
+          </div>
+
           <div class="modal-actions">
-            <button class="modal-cancel" @click="showEditProfileModal = false">Batal</button>
-            <button class="modal-confirm" @click="submitEditProfile" :disabled="isUpdating">
+            <button class="modal-cancel" @click="closeEditProfileModal">
+              Batal
+            </button>
+
+            <button
+              class="modal-confirm"
+              @click="submitEditProfile"
+              :disabled="isUpdating"
+            >
               {{ isUpdating ? 'Menyimpan...' : 'Simpan' }}
             </button>
           </div>
@@ -259,26 +488,59 @@ onMounted(fetchProfile)
 
     <!-- CHANGE PASSWORD MODAL -->
     <Transition name="modal">
-      <div v-if="showChangePasswordModal" class="modal-overlay" @click.self="showChangePasswordModal = false">
+      <div
+        v-if="showChangePasswordModal"
+        class="modal-overlay"
+        @click.self="closeChangePasswordModal"
+      >
         <div class="modal">
           <h3>Ganti Password</h3>
+
           <div class="modal-field">
             <label>Password Lama</label>
-            <input v-model="passwordForm.current_password" type="password" placeholder="Masukkan password lama" />
+            <input
+              v-model="passwordForm.current_password"
+              type="password"
+              placeholder="Masukkan password lama"
+            />
           </div>
+
           <div class="modal-field">
             <label>Password Baru</label>
-            <input v-model="passwordForm.new_password" type="password" placeholder="Minimal 8 karakter, 1 huruf besar" />
+            <input
+              v-model="passwordForm.new_password"
+              type="password"
+              placeholder="Minimal 8 karakter, 1 huruf besar"
+            />
           </div>
+
           <div class="modal-field">
             <label>Konfirmasi Password Baru</label>
-            <input v-model="passwordForm.confirm_password" type="password" placeholder="Ulangi password baru" />
+            <input
+              v-model="passwordForm.confirm_password"
+              type="password"
+              placeholder="Ulangi password baru"
+            />
           </div>
-          <div v-if="passwordError" class="modal-error">{{ passwordError }}</div>
-          <div v-if="passwordSuccess" class="modal-success">{{ passwordSuccess }}</div>
+
+          <div v-if="passwordError" class="modal-error">
+            {{ passwordError }}
+          </div>
+
+          <div v-if="passwordSuccess" class="modal-success">
+            {{ passwordSuccess }}
+          </div>
+
           <div class="modal-actions">
-            <button class="modal-cancel" @click="showChangePasswordModal = false">Batal</button>
-            <button class="modal-confirm" @click="submitChangePassword" :disabled="isUpdating">
+            <button class="modal-cancel" @click="closeChangePasswordModal">
+              Batal
+            </button>
+
+            <button
+              class="modal-confirm"
+              @click="submitChangePassword"
+              :disabled="isUpdating"
+            >
               {{ isUpdating ? 'Mengubah...' : 'Ubah Password' }}
             </button>
           </div>
@@ -322,7 +584,7 @@ onMounted(fetchProfile)
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding-bottom: 66px;
+  padding-bottom: 90px;
 }
 
 .top-header h1 {
@@ -347,7 +609,7 @@ onMounted(fetchProfile)
 .setting-card h3 {
   margin: 0 0 22px;
   color: #1e293b;
-  font-size: 15px;
+  font-size: 28px;
   font-weight: 700;
 }
 
@@ -391,13 +653,13 @@ onMounted(fetchProfile)
   display: flex;
   justify-content: center;
   align-items: center;
-  font-size: 15px;
+  font-size: 18px;
   flex-shrink: 0;
 }
 
 .setting-icon img {
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   display: block;
   object-fit: contain;
 }
@@ -405,14 +667,14 @@ onMounted(fetchProfile)
 .setting-item h4 {
   margin: 0 0 4px;
   color: #1e293b;
-  font-size: 14px;
+  font-size: 20px;
   font-weight: 600;
 }
 
 .setting-item p {
   margin: 0;
   color: #64748b;
-  font-size: 12px;
+  font-size: 18px;
   line-height: 1.4;
 }
 
@@ -428,7 +690,14 @@ onMounted(fetchProfile)
   color: #1e293b;
 }
 
-/* Modal Transitions */
+.loading-text {
+  color: #64748b;
+  font-size: 20px;
+}
+
+/* =========================
+   MODAL TRANSITION
+========================= */
 .modal-enter-active,
 .modal-leave-active {
   transition: all 0.3s ease;
@@ -445,25 +714,26 @@ onMounted(fetchProfile)
   opacity: 0;
 }
 
-/* Modal */
+/* =========================
+   MODAL
+========================= */
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 9999;
   animation: fadeIn 0.2s ease;
+  padding: 20px;
 }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -471,13 +741,17 @@ onMounted(fetchProfile)
 
 .modal {
   background: white;
-  border-radius: 16px;
+  border-radius: 18px;
   padding: 28px 32px;
   width: 100%;
-  max-width: 420px;
+  max-width: 460px;
   box-sizing: border-box;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
   animation: slideUp 0.3s ease;
+}
+
+.profile-modal {
+  max-width: 500px;
 }
 
 @keyframes slideUp {
@@ -485,6 +759,7 @@ onMounted(fetchProfile)
     transform: translateY(20px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -493,18 +768,95 @@ onMounted(fetchProfile)
 
 .modal h3 {
   margin: 0 0 20px;
-  font-size: 18px;
+  font-size: 24px;
   font-weight: 700;
   color: #1e293b;
 }
 
+/* =========================
+   EDIT PROFILE MODAL HEADER
+========================= */
+.modal-profile-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 22px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: center;
+}
+
+.profile-avatar {
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 34px;
+  font-weight: 800;
+  margin-bottom: 14px;
+  box-shadow: 0 8px 18px rgba(79, 70, 229, 0.25);
+}
+
+.modal-profile-header h3 {
+  margin: 0;
+  font-size: 24px;
+  color: #1e293b;
+}
+
+.modal-profile-header p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 18px;
+}
+
+/* =========================
+   PROFILE INFO LIST
+========================= */
+.profile-info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.profile-info-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+.profile-info-item span {
+  color: #64748b;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.profile-info-item strong {
+  color: #1e293b;
+  font-size: 18px;
+  font-weight: 700;
+  text-align: right;
+  word-break: break-word;
+}
+
+/* =========================
+   MODAL FORM
+========================= */
 .modal-field {
   margin-bottom: 20px;
 }
 
 .modal-field label {
   display: block;
-  font-size: 13px;
+  font-size: 18px;
   font-weight: 600;
   color: #374151;
   margin-bottom: 6px;
@@ -515,7 +867,7 @@ onMounted(fetchProfile)
   padding: 12px 14px;
   border: 1.5px solid #d1d5db;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: 18px;
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
   box-sizing: border-box;
@@ -528,7 +880,7 @@ onMounted(fetchProfile)
 
 .modal-error {
   color: #ef4444;
-  font-size: 13px;
+  font-size: 20px;
   margin-bottom: 12px;
   padding: 8px 12px;
   background: #fee2e2;
@@ -537,7 +889,7 @@ onMounted(fetchProfile)
 
 .modal-success {
   color: #10b981;
-  font-size: 13px;
+  font-size: 20px;
   margin-bottom: 12px;
   padding: 8px 12px;
   background: #d1fae5;
@@ -555,7 +907,7 @@ onMounted(fetchProfile)
   flex: 1;
   padding: 10px;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: 20px;
   font-weight: 600;
   cursor: pointer;
   border: none;
@@ -585,7 +937,9 @@ onMounted(fetchProfile)
   cursor: not-allowed;
 }
 
-/* Responsive */
+/* =========================
+   RESPONSIVE
+========================= */
 @media (max-width: 900px) {
   .main-wrapper {
     margin-left: 0;
@@ -614,6 +968,20 @@ onMounted(fetchProfile)
   .setting-card {
     border-radius: 18px;
     padding: 22px;
+  }
+
+  .modal {
+    max-width: 100%;
+    padding: 24px;
+  }
+
+  .profile-info-item {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .profile-info-item strong {
+    text-align: left;
   }
 }
 </style>

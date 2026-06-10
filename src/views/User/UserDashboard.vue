@@ -3,7 +3,6 @@ import { ref, onMounted, computed } from 'vue'
 import UserSidebar from '@/components/UserSideBar.vue'
 import TrendingUp from '@/assets/User/icon-TrendingUp.svg'
 import TrendingDown from '@/assets/User/icon-TrendingDown.svg'
-import EyeIcon from '@/assets/User/button.svg'
 import TransactionIcon from '@/assets/User/icon-transaction.svg'
 import BudgetIcon from '@/assets/User/icon-budgets.svg'
 import GoalIcon from '@/assets/User/icon-goals.svg'
@@ -41,8 +40,44 @@ const topSavingGoals = ref([])
 const categoryPengeluaran = ref('')
 const amountPengeluaran = ref(0)
 const percentageTransaction = ref(0)
-
 const recentTransactions = ref([])
+
+const portfolioError = ref('')
+const loadingPortfolio = ref(false)
+const portfolioSummary = ref({
+  by_type: {
+    crypto: 0,
+    stock: 0
+  },
+  gain_loss: 0,
+  gain_loss_percent: 0,
+  total_cost: 0,
+  total_investments: 0,
+  total_value: 0
+})
+
+const isPortfolioProfit = computed(() => {
+  return portfolioSummary.value.gain_loss >= 0
+})
+
+const portfolioProfitLossText = computed(() => {
+  const gainLoss = portfolioSummary.value.gain_loss
+  const percent = portfolioSummary.value.gain_loss_percent || 0
+  const sign = gainLoss >= 0 ? '+' : '-'
+
+  return `${sign}${formatRupiah(Math.abs(gainLoss))} (${sign}${Math.abs(percent).toFixed(2)}%)`
+})
+
+const formatCurrency = (value, currencyCode = 'IDR') => {
+  const number = Number(value || 0)
+
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: currencyCode || 'IDR',
+    minimumFractionDigits: currencyCode === 'USD' ? 2 : 0,
+    maximumFractionDigits: currencyCode === 'USD' ? 2 : 0
+  }).format(number)
+}
 
 const formatCurrentDate = () => {
   const date = new Date()
@@ -114,7 +149,7 @@ const formatTransactionDate = (dateString) => {
 }
 
 const isIncomeTransaction = (category) => {
-  const incomeCategories = ['salary', 'freelance', 'investment', 'gift', 'income']
+  const incomeCategories = ['salary', 'freelance', 'investment', 'gift', 'income', 'pendapatan']
 
   return incomeCategories.includes(category)
 }
@@ -377,6 +412,49 @@ const fetchRecentTransactions = async () => {
   }
 }
 
+const fetchPortfolio = async () => {
+  loadingPortfolio.value = true
+  portfolioError.value = ''
+
+  try {
+    const token = localStorage.getItem('token')
+
+    const response = await fetch('http://localhost:8000/investment/portfolio', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && {
+          Authorization: `Bearer ${token}`
+        })
+      }
+    })
+
+    const data = await response.json()
+    console.log('Portfolio data:', data)
+
+    if (!response.ok) {
+      throw new Error(data.message || data.error || 'Gagal mengambil data portfolio')
+    }
+
+    portfolioSummary.value = {
+      by_type: {
+        crypto: data.summary?.by_type?.crypto || 0,
+        stock: data.summary?.by_type?.stock || 0
+      },
+      gain_loss: data.summary?.gain_loss || 0,
+      gain_loss_percent: data.summary?.gain_loss_percent || 0,
+      total_cost: data.summary?.total_cost || 0,
+      total_investments: data.summary?.total_investments || 0,
+      total_value: data.summary?.total_value || 0
+    }
+  } catch (error) {
+    console.error('Fetch portfolio error:', error)
+    portfolioError.value = error.message
+  } finally {
+    loadingPortfolio.value = false
+  }
+}
+
 onMounted(() => {
   fetchUserProfile()
   formatCurrentDate()
@@ -386,6 +464,7 @@ onMounted(() => {
   fetchSavingGoals()
   fetchPengeluaranTerbesar()
   fetchRecentTransactions()
+  fetchPortfolio()
 })
 </script>
 
@@ -591,17 +670,17 @@ onMounted(() => {
           <div>
             <h3>Portofolio Investasi</h3>
             <p>Total Nilai</p>
-            <h2>Rp 25.650.000</h2>
+            <h2>Rp {{ formatRupiah(portfolioSummary.total_value) }}</h2>
           </div>
+            <div class="investment-profit">
+              <h3 :class="portfolioSummary.gain_loss >= 0 ? 'profit' : 'loss'">
+                {{ portfolioSummary.gain_loss >= 0 ? '+' : '-' }}{{ formatCurrency(Math.abs(portfolioSummary.gain_loss || 0), portfolioSummary.currency || 'IDR') }}
+              </h3>
 
-          <div class="profit">
-            <small>+12.5%</small>
-            <h3>+Rp 3.650.000</h3>
-          </div>
-        </div>
-
-        <div class="chart-bars">
-          <div v-for="i in 10" :key="i" class="bar"></div>
+              <span :class="portfolioSummary.gain_loss_percent >= 0 ? 'profit-percent' : 'loss-percent'">
+                {{ portfolioSummary.gain_loss_percent >= 0 ? '+' : '-' }}{{ Math.abs(portfolioSummary.gain_loss_percent || 0).toFixed(2) }}%
+              </span>
+            </div>
         </div>
       </div>
 
@@ -816,6 +895,37 @@ onMounted(() => {
   align-items: center;
   margin-bottom: 14px;
   font-size: 18px;
+}
+
+.investment-profit {
+  text-align: right;
+}
+
+.investment-profit h3 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.profit {
+  color: #10b981 !important;
+}
+
+.loss {
+  color: #ef4444 !important;
+}
+
+.profit-percent {
+  display: block;
+  color: #10b981;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.loss-percent {
+  display: block;
+  color: #ef4444;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .badge {
