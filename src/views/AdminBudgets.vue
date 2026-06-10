@@ -13,37 +13,33 @@ import iconHeader from '@/assets/icon-header.svg';
 import iconNotifications2 from '@/assets/icon-notifications2.svg';
 import iconBudgetActive from '@/assets/icon-budgetActive.svg';
 import iconBudgetAttention from '@/assets/icon-budgetsAttention.svg';
-import { ref, computed } from "vue";
+import { API_BASE } from '../../services/api.js';
+import { ref, computed, onMounted } from "vue";
 
 // Responsive sidebar state
 const isSidebarOpen = ref(false);
 
-// Budget Tracking Data
-const budgets = ref([
-  { id: 1, user: "John Doe", category: "Groceries", period: "Monthly • 2026-03-01 to 2026-03-31", spent: 650, limit: 800, status: "Safe" },
-  { id: 2, user: "Jane Smith", category: "Entertainment", period: "Monthly • 2026-03-01 to 2026-03-31", spent: 520, limit: 500, status: "Over Budget" },
-  { id: 3, user: "Mike Johnson", category: "Transportation", period: "Monthly • 2026-03-01 to 2026-03-31", spent: 385, limit: 400, status: "Near Limit" },
-  { id: 4, user: "Sarah Wilson", category: "Healthcare", period: "Monthly • 2026-03-01 to 2026-03-31", spent: 450, limit: 1000, status: "Safe" },
-  { id: 5, user: "Tom Brown", category: "Shopping", period: "Monthly • 2026-03-01 to 2026-03-31", spent: 720, limit: 600, status: "Over Budget" },
-  { id: 6, user: "Emily Davis", category: "Dining", period: "Monthly • 2026-03-01 to 2026-03-31", spent: 280, limit: 450, status: "Safe" }
-]);
+// API State
+const isLoading = ref(true);
+const error = ref(null);
 
-// Savings Goals Data
-const savingsGoals = ref([
-  { id: 1, user: "John Doe", goal: "Vacation Fund", targetDate: "2026-07-01", saved: 3200, target: 5000, status: "On track" },
-  { id: 2, user: "Jane Smith", goal: "Emergency Fund", targetDate: "2026-12-31", saved: 8500, target: 10000, status: "On track" },
-  { id: 3, user: "Sarah Wilson", goal: "New Car", targetDate: "2027-06-01", saved: 6200, target: 15000, status: "On track" },
-  { id: 4, user: "Tom Brown", goal: "Home Renovation", targetDate: "2026-10-15", saved: 12000, target: 20000, status: "On track" }
-]);
+// Data State (Replaced hardcoded arrays with empty refs)
+const budgets = ref([]);
+const savingsGoals = ref([]);
+const stats = ref({
+  totalBudgets: 0,
+  overBudget: 0,
+  savingsGoalsCount: 0
+});
 
-// Computed
-const totalBudgets = computed(() => budgets.value.length);
-const overBudget = computed(() => budgets.value.filter(b => b.status === "Over Budget").length);
-const savingsGoalsCount = computed(() => savingsGoals.value.length);
+// Computed (Now pulls from the fetched stats)
+const totalBudgets = computed(() => stats.value.totalBudgets);
+const overBudget = computed(() => stats.value.overBudget);
+const savingsGoalsCount = computed(() => stats.value.savingsGoalsCount);
 
-// Helpers
-const getPercentage = (spent, limit) => Math.min((spent / limit) * 100, 100);
-const getSavingsPercentage = (saved, target) => ((saved / target) * 100).toFixed(1);
+// Helpers (Unchanged)
+const getPercentage = (spent, limit) => limit > 0 ? Math.min((spent / limit) * 100, 100) : 0;
+const getSavingsPercentage = (saved, target) => target > 0 ? ((saved / target) * 100).toFixed(1) : 0;
 const getRemaining = (spent, limit) => limit - spent;
 const getToGo = (saved, target) => target - saved;
 
@@ -61,6 +57,85 @@ const getProgressBarClass = (status) => {
   return "";
 };
 
+// ==========================================
+// API FETCHING LOGIC
+// ==========================================
+const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
+const headers = {
+  'Authorization': `Bearer ${token}`,
+  'Content-Type': 'application/json'
+};
+
+// 1. Fetch Global Stats
+const fetchStats = async () => {
+  const res = await fetch(`${API_BASE}/admin/budget-savings/stats`, { headers });
+  if (!res.ok) throw new Error('Failed to fetch stats');
+  const result = await res.json();
+  if (result.status === 'success') {
+    stats.value = {
+      totalBudgets: result.data.total_budgets,
+      overBudget: result.data.over_budget,
+      savingsGoalsCount: result.data.savings_goals
+    };
+  }
+};
+
+// 2. Fetch All User Budgets
+const fetchBudgets = async () => {
+  // We request limit=50 to show a good amount on the admin page
+  const res = await fetch(`${API_BASE}/admin/budgets?limit=50`, { headers });
+  if (!res.ok) throw new Error('Failed to fetch budgets');
+  const result = await res.json();
+  
+  if (result.status === 'success') {
+    budgets.value = result.data.map(b => ({
+      user: b.user_name,
+      category: b.category,
+      period: `Monthly • ${b.month}`,
+      spent: b.spent,
+      limit: b.limit,
+      status: b.status
+    }));
+  }
+};
+
+// 3. Fetch All Savings Goals
+const fetchSavings = async () => {
+  const res = await fetch(`${API_BASE}/admin/savings-goals?limit=50`, { headers });
+  if (!res.ok) throw new Error('Failed to fetch savings goals');
+  const result = await res.json();
+  
+  if (result.status === 'success') {
+    savingsGoals.value = result.data.map(g => ({
+      user: g.user_name,
+      goal: g.goal_name,
+      targetDate: g.target_date,
+      saved: g.current_amount,
+      target: g.target_amount,
+      status: g.status
+    }));
+  }
+};
+
+// Master fetch function
+const fetchData = async () => {
+  isLoading.value = true;
+  error.value = null;
+  try {
+    // Run all 3 API calls in parallel for speed
+    await Promise.all([fetchStats(), fetchBudgets(), fetchSavings()]);
+  } catch (err) {
+    error.value = err.message;
+    console.error("Budgets Fetch Error:", err);
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+onMounted(() => {
+  fetchData();
+});
+
 // Toggle sidebar
 const toggleSidebar = () => {
   isSidebarOpen.value = !isSidebarOpen.value;
@@ -72,11 +147,27 @@ const closeSidebarOnMobile = () => {
     isSidebarOpen.value = false;
   }
 };
+
+// Logout API
+const handleLogout = async () => {
+  try {
+    await fetch(`${API_BASE}/admin/logout`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+  } catch (err) {
+    console.error('Logout error:', err);
+  } finally {
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('token');
+    window.location.href = '/';
+  }
+};
 </script>
 
 <template>
   <div class="layout" :class="{ 'sidebar-open': isSidebarOpen }">
-    <!-- Sidebar Toggle Button (Left Center) - Only visible on mobile/tablet -->
+    <!-- Sidebar Toggle Button -->
     <button 
       class="sidebar-toggle" 
       @click="toggleSidebar"
@@ -101,41 +192,32 @@ const closeSidebarOnMobile = () => {
       </div>
       <nav>
         <a @click.prevent="$router.push('/adminDashboard'); closeSidebarOnMobile()">
-          <img :src="iconDashboard" class="icon-sidebar" alt="">
-          Dashboard
+          <img :src="iconDashboard" class="icon-sidebar" alt=""> Dashboard
         </a>
         <a @click.prevent="$router.push('/adminUsers'); closeSidebarOnMobile()">
-          <img :src="iconUsers" class="icon-sidebar" alt="">
-          Users
+          <img :src="iconUsers" class="icon-sidebar" alt=""> Users
         </a>
         <a @click.prevent="$router.push('/adminTransactions'); closeSidebarOnMobile()">
-          <img :src="iconTransactions" class="icon-sidebar" alt="">
-          Transactions
+          <img :src="iconTransactions" class="icon-sidebar" alt=""> Transactions
         </a>
         <a @click.prevent="$router.push('/adminInvestments'); closeSidebarOnMobile()">
-          <img :src="iconInvestments" class="icon-sidebar" alt="">
-          Investments
+          <img :src="iconInvestments" class="icon-sidebar" alt=""> Investments
         </a>
         <a class="active">
-          <img :src="iconBudgets" class="icon-sidebar" alt="">
-          Budgets
+          <img :src="iconBudgets" class="icon-sidebar" alt=""> Budgets
         </a>
         <a @click.prevent="$router.push('/adminAnalytics'); closeSidebarOnMobile()">
-          <img :src="iconAnalytics" class="icon-sidebar" alt="">
-          Analytics
+          <img :src="iconAnalytics" class="icon-sidebar" alt=""> Analytics
         </a>
         <a @click.prevent="$router.push('/adminNotifications'); closeSidebarOnMobile()">
-          <img :src="iconNotifications" class="icon-sidebar" alt="">
-          Notifications
+          <img :src="iconNotifications" class="icon-sidebar" alt=""> Notifications
         </a>
         <a @click.prevent="$router.push('/adminAudit'); closeSidebarOnMobile()">
-          <img :src="iconAuditLogs" class="icon-sidebar" alt="">
-          Audit Logs
+          <img :src="iconAuditLogs" class="icon-sidebar" alt=""> Audit Logs
         </a>
       </nav>
-      <div class="logout" @click="closeSidebarOnMobile()">
-        <img :src="iconLogout" class="icon-sidebar" alt="">
-        Logout
+      <div class="logout" @click="handleLogout">
+        <img :src="iconLogout" class="icon-sidebar" alt=""> Logout
       </div>
     </aside>
 
@@ -143,8 +225,6 @@ const closeSidebarOnMobile = () => {
     <main class="main">
       <!-- Header -->
       <div class="header">
-        <img :src="iconHeader" class="icon-header" alt="">
-        <input type="text" placeholder="Search users, transactions..." />
         <div class="user">
           <span class="role-badge">Superadmin</span>
           <img :src="iconNotifications2" class="icon-header" alt="">
@@ -153,106 +233,124 @@ const closeSidebarOnMobile = () => {
         </div>
       </div>
 
-      <!-- Title -->
-      <h1>Budget & Savings</h1>
-      <p class="subtitle">Monitor user budgets and savings goals</p>
-
-      <!-- Summary Cards -->
-      <div class="summary-cards">
-        <div class="stat-card">
-          <p class="stat-label">Total Budgets</p>
-          <h2 class="stat-number">{{ totalBudgets }}</h2>
-          <div class="stat-footer">
-            <img :src="iconBudgetActive" class="stat-icon active" alt="">
-            <span class="stat-subtitle active">Active this month</span>
-          </div>
-        </div>
-        <div class="stat-card">
-          <p class="stat-label">Over Budget</p>
-          <h2 class="stat-number text-over">{{ overBudget }}</h2>
-          <div class="stat-footer">
-            <img :src="iconBudgetAttention" class="stat-icon attention" alt="">
-            <span class="stat-subtitle over">Needs attention</span>
-          </div>
-        </div>
-        <div class="stat-card">
-          <p class="stat-label">Savings Goals</p>
-          <h2 class="stat-number">{{ savingsGoalsCount }}</h2>
-          <div class="stat-footer">
-            <img :src="iconBudgetActive" class="stat-icon active" alt="">
-            <span class="stat-subtitle active">In progress</span>
-          </div>
-        </div>
+      <!-- Loading State -->
+      <div v-if="isLoading" class="loading-state" style="text-align: center; padding: 50px; color: #6b7280;">
+        <p>Loading budgets and savings data...</p>
       </div>
 
-      <!-- Budget Tracking Section -->
-      <div class="section-card">
-        <h2 class="section-title">Budget Tracking</h2>
-        <div class="budget-list">
-          <div v-for="budget in budgets" :key="budget.id" class="budget-item">
-            <div class="budget-header">
-              <div class="budget-info">
-                <div class="user-with-badge">
-                  <span class="budget-user">{{ budget.user }}</span>
-                  <span class="category-badge">{{ budget.category }}</span>
+      <!-- Error State -->
+      <div v-else-if="error" class="error-state" style="text-align: center; padding: 50px; color: #ef4444;">
+        <p>Failed to load data: {{ error }}</p>
+        <button @click="fetchData" style="margin-top: 10px; padding: 8px 16px; background: #1e3a8a; color: white; border: none; border-radius: 6px; cursor: pointer;">Retry</button>
+      </div>
+
+      <!-- Data Loaded -->
+      <template v-else>
+        <!-- Title -->
+        <h1>Budget & Savings</h1>
+        <p class="subtitle">Monitor user budgets and savings goals</p>
+
+        <!-- Summary Cards -->
+        <div class="summary-cards">
+          <div class="stat-card">
+            <p class="stat-label">Total Budgets</p>
+            <h2 class="stat-number">{{ totalBudgets }}</h2>
+            <div class="stat-footer">
+              <img :src="iconBudgetActive" class="stat-icon active" alt="">
+              <span class="stat-subtitle active">Active this month</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <p class="stat-label">Over Budget</p>
+            <h2 class="stat-number text-over">{{ overBudget }}</h2>
+            <div class="stat-footer">
+              <img :src="iconBudgetAttention" class="stat-icon attention" alt="">
+              <span class="stat-subtitle over">Needs attention</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <p class="stat-label">Savings Goals</p>
+            <h2 class="stat-number">{{ savingsGoalsCount }}</h2>
+            <div class="stat-footer">
+              <img :src="iconBudgetActive" class="stat-icon active" alt="">
+              <span class="stat-subtitle active">In progress</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Budget Tracking Section -->
+        <div class="section-card">
+          <h2 class="section-title">Budget Tracking</h2>
+          <div v-if="budgets.length === 0" style="text-align: center; color: #9ca3af; padding: 20px;">No budgets found.</div>
+          <div v-else class="budget-list">
+            <!-- Changed :key to index because Go backend doesn't return the MongoDB _id here -->
+            <div v-for="(budget, index) in budgets" :key="index" class="budget-item">
+              <div class="budget-header">
+                <div class="budget-info">
+                  <div class="user-with-badge">
+                    <span class="budget-user">{{ budget.user }}</span>
+                    <span class="category-badge">{{ budget.category }}</span>
+                  </div>
+                  <span class="budget-period">{{ budget.period }}</span>
                 </div>
-                <span class="budget-period">{{ budget.period }}</span>
+                <div class="budget-amounts">
+                  <span class="budget-total">${{ budget.spent }} / ${{ budget.limit }}</span>
+                  <span :class="['status-badge', getStatusClass(budget.status)]">{{ budget.status }}</span>
+                </div>
               </div>
-              <div class="budget-amounts">
-                <span class="budget-total">${{ budget.spent }} / ${{ budget.limit }}</span>
-                <span :class="['status-badge', getStatusClass(budget.status)]">{{ budget.status }}</span>
-              </div>
-            </div>
-            <div class="progress-container">
-              <div class="progress-bar">
-                <div 
-                  :class="['progress-fill', getProgressBarClass(budget.status)]" 
-                  :style="{ width: getPercentage(budget.spent, budget.limit) + '%' }"
-                ></div>
-              </div>
-              <div class="progress-details">
-                <span class="percentage">{{ getPercentage(budget.spent, budget.limit).toFixed(1) }}% used</span>
-                <span class="remaining" :class="{ negative: getRemaining(budget.spent, budget.limit) < 0 }">
-                  ${{ Math.abs(getRemaining(budget.spent, budget.limit)) }} 
-                  {{ getRemaining(budget.spent, budget.limit) < 0 ? 'over' : 'remaining' }}
-                </span>
+              <div class="progress-container">
+                <div class="progress-bar">
+                  <div 
+                    :class="['progress-fill', getProgressBarClass(budget.status)]" 
+                    :style="{ width: getPercentage(budget.spent, budget.limit) + '%' }"
+                  ></div>
+                </div>
+                <div class="progress-details">
+                  <span class="percentage">{{ getPercentage(budget.spent, budget.limit).toFixed(1) }}% used</span>
+                  <span class="remaining" :class="{ negative: getRemaining(budget.spent, budget.limit) < 0 }">
+                    ${{ Math.abs(getRemaining(budget.spent, budget.limit)) }} 
+                    {{ getRemaining(budget.spent, budget.limit) < 0 ? 'over' : 'remaining' }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Savings Goals Section -->
-      <div class="section-card">
-        <h2 class="section-title">Savings Goals Progress</h2>
-        <div class="savings-list">
-          <div v-for="goal in savingsGoals" :key="goal.id" class="savings-item">
-            <div class="savings-header">
-              <div class="savings-info">
-                <span class="savings-user">{{ goal.user }}</span>
-                <span class="savings-goal">{{ goal.goal }}</span>
-                <span class="savings-date">Target: {{ goal.targetDate }}</span>
+        <!-- Savings Goals Section -->
+        <div class="section-card">
+          <h2 class="section-title">Savings Goals Progress</h2>
+          <div v-if="savingsGoals.length === 0" style="text-align: center; color: #9ca3af; padding: 20px;">No savings goals found.</div>
+          <div v-else class="savings-list">
+            <!-- Changed :key to index -->
+            <div v-for="(goal, index) in savingsGoals" :key="index" class="savings-item">
+              <div class="savings-header">
+                <div class="savings-info">
+                  <span class="savings-user">{{ goal.user }}</span>
+                  <span class="savings-goal">{{ goal.goal }}</span>
+                  <span class="savings-date">Target: {{ goal.targetDate }}</span>
+                </div>
+                <div class="savings-amounts">
+                  <span class="savings-total">${{ goal.saved }} / ${{ goal.target }}</span>
+                  <span class="savings-percent">{{ getSavingsPercentage(goal.saved, goal.target) }}% complete</span>
+                </div>
               </div>
-              <div class="savings-amounts">
-                <span class="savings-total">${{ goal.saved }} / ${{ goal.target }}</span>
-                <span class="savings-percent">{{ getSavingsPercentage(goal.saved, goal.target) }}% complete</span>
-              </div>
-            </div>
-            <div class="progress-container">
-              <div class="progress-bar">
-                <div 
-                  class="progress-fill progress-savings" 
-                  :style="{ width: getSavingsPercentage(goal.saved, goal.target) + '%' }"
-                ></div>
-              </div>
-              <div class="progress-details">
-                <span class="percentage on-track">↗ On track</span>
-                <span class="to-go">${{ getToGo(goal.saved, goal.target) }} to go</span>
+              <div class="progress-container">
+                <div class="progress-bar">
+                  <div 
+                    class="progress-fill progress-savings" 
+                    :style="{ width: getSavingsPercentage(goal.saved, goal.target) + '%' }"
+                  ></div>
+                </div>
+                <div class="progress-details">
+                  <span class="percentage on-track">↗ On track</span>
+                  <span class="to-go">${{ getToGo(goal.saved, goal.target) }} to go</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </template>
     </main>
   </div>
 </template>
@@ -710,386 +808,29 @@ h1 {
 }
 
 @media (max-width: 1024px) {
-  /* Show toggle button */
-  .sidebar-toggle {
-    display: flex;
-  }
+  .sidebar-toggle { display: flex; }
+  .layout.sidebar-open .sidebar-overlay { display: block; }
+  .sidebar { position: fixed; top: 0; left: 0; height: 100vh; max-height: 100vh; width: 260px; z-index: 1000; transform: translateX(-100%); transition: transform 0.3s ease; overflow: hidden; padding: 12px; box-sizing: border-box; display: flex; flex-direction: column; }
+  .layout.sidebar-open .sidebar { transform: translateX(0); }
+  .brand { margin-bottom: 20px; margin-top: 5px; flex-shrink: 0; }
+  .logo { width: 32px; height: 32px; }
+  .titlelogo { font-size: 18px; }
+  .sidebar nav { flex: 1; overflow-y: auto; margin-bottom: 10px; }
+  .sidebar nav a { padding: 10px 12px; margin-bottom: 4px; font-size: 14px; }
+  .icon-sidebar { width: 22px; height: 22px; }
+  .logout { margin-top: auto; font-size: 14px; padding: 10px 12px; flex-shrink: 0; }
   
-  .layout.sidebar-open .sidebar-overlay {
-    display: block;
-  }
+  .main { width: 100%; padding: 0 15px 20px 15px; }
+  .header { margin: 0 -15px 24px -15px; padding: 16px 15px; }
+  .header input { width: 200px; font-size: 16px; }
+  .icon-header { width: 24px; height: 24px; padding: 8px; }
+  .role-badge { font-size: 14px; }
+  .avatar { width: 36px; height: 36px; font-size: 14px; }
+  .username { font-size: 14px; }
   
-  .sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100vh;
-    max-height: 100vh;
-    width: 260px;
-    z-index: 1000;
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-    overflow: hidden; 
-    padding: 12px;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-  }
+  h1 { font-size: 28px; }
+  .subtitle { font-size: 14px; }
   
-  .layout.sidebar-open .sidebar {
-    transform: translateX(0);
-  }
-  
-  .brand {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 20px; 
-    margin-top: 5px;
-    flex-shrink: 0; 
-  }
-  
-  .logo {
-    width: 32px;
-    height: 32px;
-  }
-  
-  .titlelogo {
-    font-size: 18px;
-  }
-  
-  
-  .sidebar nav {
-    flex: 1; 
-    overflow-y: auto; 
-    margin-bottom: 10px;
-  }
-  
-  .sidebar nav a {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: 8px;
-    margin-bottom: 4px; 
-    cursor: pointer;
-    opacity: 0.9;
-    font-size: 14px; /* Smaller font */
-    text-decoration: none;
-    color: white;
-    white-space: nowrap;
-  }
-  
-  .icon-sidebar {
-    width: 22px;
-    height: 22px;
-    flex-shrink: 0;
-  }
-  
-  .sidebar nav a:hover {
-    background: #3b82f6;
-  }
-  
-  .sidebar nav .active {
-    background: #3b82f6;
-  }
-  
-  
-  .logout {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: auto; 
-    cursor: pointer;
-    font-size: 14px;
-    padding: 10px 12px;
-    border-radius: 8px;
-    flex-shrink: 0; 
-    white-space: nowrap;
-  }
-  
-  
-  .main {
-    width: 100%;
-  }
-  
-  .summary-cards { 
-    grid-template-columns: repeat(2, 1fr); 
-  }
-}
-
-@media (max-width: 640px) {
-  .sidebar {
-    width: 80%; 
-    max-width: 240px; 
-    padding: 10px;
-  }
-  
-  .sidebar-toggle {
-    left: 0;
-    top: 10px;
-    transform: none;
-    border-radius: 0 8px 8px 0;
-    z-index: 1002;
-    width: 30px;
-    height: 36px;
-    padding: 6px 5px;
-  }
-  
-  .sidebar-toggle.active {
-    left: 80%;
-    max-width: 240px;
-    border-radius: 8px 0 0 8px;
-    margin-left: -30px;
-  }
-  
-  
-  .brand {
-    margin-bottom: 15px;
-    margin-top: 0;
-    gap: 6px;
-  }
-  
-  .logo {
-    width: 28px;
-    height: 28px;
-  }
-  
-  .titlelogo {
-    font-size: 16px;
-  }
-  
-  .sidebar nav a {
-    padding: 10px 10px;
-    font-size: 13px;
-    margin-bottom: 3px;
-    min-height: 44px; 
-  }
-  
-  .icon-sidebar {
-    width: 20px;
-    height: 20px;
-  }
-  
-  .logout {
-    padding: 10px 10px;
-    font-size: 13px;
-    min-height: 44px;
-  }
-}
-
-@media (max-width: 480px) {
-  .sidebar {
-    width: 85%;
-    max-width: 220px;
-    padding: 8px;
-  }
-  
-  .sidebar-toggle.active {
-    left: 85%;
-    max-width: 220px;
-  }
-  
-  .brand {
-    margin-bottom: 10px;
-    margin-top: 0;
-  }
-  
-  .logo {
-    width: 24px;
-    height: 24px;
-  }
-  
-  .titlelogo {
-    font-size: 14px;
-  }
-  
-  .sidebar nav a {
-    padding: 9px 8px;
-    font-size: 12px;
-    margin-bottom: 2px;
-    gap: 8px;
-  }
-  
-  .icon-sidebar {
-    width: 18px;
-    height: 18px;
-  }
-  
-  .logout {
-    font-size: 12px;
-    padding: 9px 8px;
-    gap: 8px;
-  }
-}
-
-@media (max-height: 600px) and (max-width: 1024px) {
-  .brand {
-    margin-bottom: 8px;
-    margin-top: 0;
-  }
-  
-  .logo {
-    width: 24px;
-    height: 24px;
-  }
-  
-  .titlelogo {
-    font-size: 14px;
-  }
-  
-  .sidebar nav a {
-    padding: 8px 10px;
-    font-size: 12px;
-    margin-bottom: 2px;
-    min-height: 40px;
-  }
-  
-  .logout {
-    padding: 8px 10px;
-    font-size: 12px;
-    min-height: 40px;
-  }
-}
-
-@media (max-width: 1024px) {
-  .sidebar::-webkit-scrollbar {
-    width: 4px;
-  }
-  
-  .sidebar::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
-  }
-  
-  .sidebar::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 2px;
-  }
-  
-  .sidebar {
-    scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch;
-  }
-  
-
-  .sidebar nav {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1);
-  }
-}
-
-@media (hover: none) and (pointer: coarse) {
-  .sidebar nav a,
-  .logout {
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-  }
-  
-  .sidebar-toggle {
-    min-height: 44px;
-    min-width: 44px;
-  }
-}
-
-@media (min-width: 1025px) and (max-height: 900px) {
-  .sidebar {
-    height: 100vh;
-    max-height: 100vh;
-    overflow: hidden; 
-    display: flex;
-    flex-direction: column;
-    padding: 15px; 
-  }
-
-  
-  .brand {
-    margin-bottom: 15px !important; 
-    margin-top: 5px;
-  }
-
-  .logo {
-    width: 35px; 
-    height: 35px;
-  }
-
-  .titlelogo {
-    font-size: 20px; 
-  }
-
-  .sidebar nav {
-    flex: 1; 
-    overflow-y: auto; 
-    margin-bottom: 10px;
-  }
-
-  .sidebar nav a {
-    margin-bottom: 5px; 
-    padding: 8px 10px;
-    font-size: 15px; 
-  }
-
-  .icon-sidebar {
-    width: 22px; 
-    height: 22px;
-  }
-
-
-  .logout {
-    margin-top: auto; 
-    flex-shrink: 0;
-    padding: 10px;
-    font-size: 15px; 
-  }
-  
-  
-  .sidebar nav::-webkit-scrollbar {
-    width: 4px;
-  }
-  
-  .sidebar nav::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 2px;
-  }
-}
-
-@media (min-width: 1024px) and (max-width: 1280px) {
-  
-  .sidebar {
-    padding: 15px; 
-  }
-
-  
-  .brand {
-    margin-bottom: 30px !important;
-    margin-top: 10px;
-  }
-
-  .logo {
-    width: 40px;
-    height: 40px;
-  }
-
-  .titlelogo {
-    font-size: 22px;
-  }
-
-  .sidebar nav a {
-    margin-bottom: 8px !important;
-    font-size: 16px; 
-    padding: 8px 12px;
-  }
-
-  .icon-sidebar {
-    width: 24px; 
-    height: 24px;
-  }
-
-
-  .logout {
-    font-size: 16px; 
-    padding: 10px 12px;
-  }
+  .summary-cards { grid-template-columns: repeat(2, 1fr); }
 }
 </style>

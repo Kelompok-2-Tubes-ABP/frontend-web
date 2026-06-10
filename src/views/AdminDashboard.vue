@@ -17,9 +17,13 @@ import iconTotalRevenue from '@/assets/icon-totalrevenue.svg';
 import iconActiveSessions from '@/assets/icon-activesessions.svg';
 import LineChart from '@/components/LineChart.vue'
 import PieChart from '@/components/PieChart.vue'
-import { ref,onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
+import { API_BASE } from '../../services/api.js';
+const isSidebarOpen = ref(false);
+const toggleSidebar = () => { isSidebarOpen.value = !isSidebarOpen.value; };
+const closeSidebarOnMobile = () => { if (window.innerWidth < 1024) isSidebarOpen.value = false; };
+import MiniChart from '@/components/MiniChart.vue'
 import axios from 'axios'
-const activeRange = ref('daily')
 
 // state utama
 const stats = ref({
@@ -30,27 +34,36 @@ const stats = ref({
 })
 
 const chartData = ref({
-  daily: [],
-  monthly: []
+  labels: [],
+  revenue: [],
+  transactions: []
 })
 
+const getColor = (percent) => {
+  return percent >= 0 ? '#22c55e' : '#ef4444' // hijau / merah
+}
+
+const quickStatsRaw = ref({})
 const topCategories = ref([])
 const activities = ref([])
+const formatDate = (date) => {
+  return new Date(date).toLocaleString()
+}
 
 // fetch function
 const fetchDashboard = async () => {
   try {
     const token = localStorage.getItem('token')
-    const res = await axios.get('http://localhost:8080/admin/dashboard', {
+    const res = await axios.get(`${API_BASE}/admin/dashboard`, {
       headers: {
         Authorization: `Bearer ${token}`
       }
     })
-
-    console.log('RESPONSE:', res.data)
-
+  
     const data = res.data.data
-
+    console.log('Dashboard Data', res.data.data)
+    quickStatsRaw.value = data.quick_stats
+    // ✅ QUICK STATS
     stats.value = {
       totalUsers: data.quick_stats.total_users?.value || 0,
       totalTransactions: data.quick_stats.total_transactions?.value || 0,
@@ -58,22 +71,38 @@ const fetchDashboard = async () => {
       activeSessions: data.quick_stats.active_sessions?.value || 0
     }
 
-    chartData.value = data.chart_data || {
-      daily: { revenue: [], transactions: [] },
-      monthly: { revenue: [], transactions: [] }
+    // ✅ MINI CHART (ambil history daily)
+    miniCharts.value = {
+      users: (data.quick_stats.total_users?.history?.daily || []).map(i => i.value),
+      transactions: (data.quick_stats.total_transactions?.history?.daily || []).map(i => i.value),
+      revenue: (data.quick_stats.total_revenue?.history?.daily || []).map(i => i.value),
+      sessions: (data.quick_stats.active_sessions?.history?.daily || []).map(i => i.value)
     }
+
+    // ✅ MAIN CHART (mapping array jadi format chart)
+    const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+    chartData.value = {
+      labels: data.chart_data.map(item => days[item._id - 1]),
+      revenue: data.chart_data.map(item => item.revenue),
+      transactions: data.chart_data.map(item => item.transactions)
+  }
+
+    // ✅ PIE CHART
     topCategories.value = data.top_categories.map(item => ({
       name: item._id,
       value: Math.round(item.percentage)
     }))
-    activities.value = activities.value = data.recent_activities || []
+
+    // ✅ ACTIVITIES (mapping ulang)
+    activities.value = data.recent_activities.map(item => ({
+      name: item.actor_name,
+      action: item.action_type,
+      detail: item.details,
+      time: item.timestamp
+    }))
 
   } catch (err) {
-    console.error('Error fetch dashboard:', err)
-    if (err.response?.status === 401) {
-      localStorage.removeItem('token')
-      window.location.href = '/'
-    }
+    console.error(err)
   }
 }
 
@@ -81,7 +110,7 @@ const handleLogout = async () => {
   try {
     const token = localStorage.getItem('token')
 
-    await axios.post('http://localhost:8080/admin/logout', {}, {
+    await axios.post(`${API_BASE}/admin/logout`, {}, {
       headers: {
         Authorization: `Bearer ${token}`
       }
@@ -96,6 +125,13 @@ const handleLogout = async () => {
   }
 }
 
+const miniCharts = ref({
+  users: [],
+  transactions: [],
+  revenue: [],
+  sessions: []
+})
+
 // lifecycle
 onMounted(() => {
   fetchDashboard()
@@ -103,7 +139,14 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="layout">
+  <div class="layout" :class="{ 'sidebar-open': isSidebarOpen }">
+    <!-- Sidebar Toggle Button -->
+    <button class="sidebar-toggle" @click="toggleSidebar" :class="{ 'active': isSidebarOpen }">
+      <svg v-if="!isSidebarOpen" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div v-if="isSidebarOpen" class="sidebar-overlay" @click="closeSidebarOnMobile"></div>
+
     <!-- Sidebar -->
     <aside class="sidebar">
         <div class="brand">
@@ -131,15 +174,15 @@ onMounted(() => {
                 <img :src="iconBudgets" class="icon-sidebar">
                 Budgets
             </a>
-            <a>
+            <a @click.prevent="$router.push('/adminAnalytics')">
                 <img :src="iconAnalytics" class="icon-sidebar">
                 Analytics
             </a>
-            <a>
+            <a @click.prevent="$router.push('/adminNotifications')">
                 <img :src="iconNotifications" class="icon-sidebar">
                 Notifications
             </a>
-            <a>
+            <a @click.prevent="$router.push('/adminAudit')">
                 <img :src="iconAuditLogs" class="icon-sidebar">
                 Audit Logs
             </a>
@@ -155,8 +198,6 @@ onMounted(() => {
     <main class="main">
       <!-- Header -->
       <div class="header">
-        <img :src="iconHeader" class="icon-header">
-        <input type="text" placeholder="Search users, transactions..." />
         <div class="user">
           <span class="badge">Superadmin</span>
           <img :src="iconNotifications2" class="icon-header">
@@ -173,31 +214,79 @@ onMounted(() => {
       <div class="cards">
         <div class="card">
           <div class="icon-card">
-            <p style="padding-right:70px">Total Users</p>
+            <span>Total Users</span>
             <img :src="iconTotalUsers" class="icon-stats">
           </div>
           <h2>{{ stats.totalUsers }}</h2>
+          <small 
+            :style="{ color: getColor(quickStatsRaw.total_users?.change_percent || 0) }"
+          >
+            {{ quickStatsRaw.total_users?.change_percent || 0 }}% 
+            vs last month
+            {{ quickStatsRaw.total_users?.change_percent > 0 ? '↑' : '↓' }}
+          </small>
+
+          <MiniChart 
+            :data="miniCharts.users" 
+            :color="getColor(quickStatsRaw.total_users?.change_percent || 0)"
+          />
         </div>
         <div class="card">
           <div class="icon-card">
-            <p>Total Transactions</p>
+            <span>Total Transactions</span>
             <img :src="iconTotalTransactions" class="icon-stats">
           </div>
           <h2>{{ stats.totalTransactions }}</h2>
+          <small 
+            :style="{ color: getColor(quickStatsRaw.total_transactions?.change_percent || 0) }"
+          >
+            {{ quickStatsRaw.total_transactions?.change_percent || 0 }}% 
+            vs last month
+            {{ quickStatsRaw.total_transactions?.change_percent > 0 ? '↑' : '↓' }}
+          </small>
+
+          <MiniChart 
+            :data="miniCharts.transactions" 
+            :color="getColor(quickStatsRaw.total_transactions?.change_percent || 0)"
+          />
         </div>
         <div class="card">
           <div class="icon-card">
-             <p style="padding-right:45px;">Total Revenue</p>
+             <span>Total Revenue</span>
              <img :src="iconTotalRevenue" class="icon-stats">
           </div>
           <h2>${{ (stats.totalRevenue || 0).toLocaleString() }}</h2>
+          <small 
+            :style="{ color: getColor(quickStatsRaw.total_revenue?.change_percent || 0) }"
+          >
+            {{ quickStatsRaw.total_revenue?.change_percent || 0 }}% 
+            vs last month
+            {{ quickStatsRaw.total_revenue?.change_percent > 0 ? '↑' : '↓' }}
+          </small>
+
+          <MiniChart 
+            :data="miniCharts.revenue" 
+            :color="getColor(quickStatsRaw.total_revenue?.change_percent || 0)"
+          />
         </div>
         <div class="card">
           <div class="icon-card">
-            <p style="padding-right: 30px;">Active Sessions</p>
+            <span>Active Sessions</span>
             <img :src="iconActiveSessions" class="icon-stats">
           </div>
           <h2>{{ stats.activeSessions }}</h2>
+          <small 
+            :style="{ color: getColor(quickStatsRaw.active_sessions?.change_percent || 0) }"
+          >
+            {{ quickStatsRaw.active_sessions?.change_percent || 0 }}% 
+            vs last month
+            {{ quickStatsRaw.active_sessions?.change_percent > 0 ? '↑' : '↓' }}
+          </small>
+
+          <MiniChart 
+            :data="miniCharts.sessions" 
+            :color="getColor(quickStatsRaw.active_sessions?.change_percent || 0)"
+          />
         </div>
       </div>
 
@@ -209,25 +298,8 @@ onMounted(() => {
             Revenue & Transactions Overview
           </h4>
         </div>
-        <div class="chart-toggle">
-          <button 
-            :class="{ active: activeRange === 'Daily' }"
-            @click="activeRange = 'Daily'"
-          >
-            Daily
-          </button>
-          <button 
-            :class="{ active: activeRange === 'Monthly' }"
-            @click="activeRange = 'Monthly'"
-          >
-            Monthly
-          </button>
-        </div>
         <div class="chart-content">
-          <LineChart 
-            :range="activeRange" 
-            :data="chartData[activeRange] || {}"
-          />
+          <LineChart :data="chartData" />
         </div>
         </div>
 
@@ -267,13 +339,12 @@ onMounted(() => {
       <!-- Activity -->
       <div class="activity">
         <h3>Recent Activities</h3>
-        <div 
-          class="item"
-          v-for="item in activities"
-          :key="item.name"
-        >
-          <span>{{ item.name }} - {{ item.action }}</span>
-           <b>{{ item.amount ? `$${item.amount}` : '-' }}</b>
+        <div class="item" v-for="item in activities" :key="item.time">
+          <span>
+            {{ item.name }} - {{ item.action }}
+            <small>({{ item.detail }})</small>
+          </span>
+          <b>{{ formatDate(item.time) }}</b>
         </div>
       </div>
     </main>
@@ -465,14 +536,14 @@ h1 {
 .icon-card{
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 60%;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .icon-stats {
   width: 30px;
   height: 30px;
-  margin-top: 5px;
+  flex-shrink: 0;
 }
 /* Charts */
 .charts {
@@ -502,30 +573,6 @@ h1 {
   margin-bottom: 15px;
   color: rgb(46, 44, 44);
   font-size: 20px
-}
-
-.chart-toggle {
-  width: fit-content;
-  background: #f1f5f9;
-  padding: 4px;
-  margin-bottom: 18px;
-  border-radius: 18px;
-  display: flex;
-  gap: 4px;
-}
-
-.chart-toggle button {
-  border: none;
-  padding: 6px 12px;
-  border-radius: 16px;
-  background: transparent;
-  cursor: pointer;
-  font-size: 20px;
-}
-
-.chart-toggle button.active {
-  background: white;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
 }
 
 .chart-box {
@@ -605,4 +652,36 @@ h1 {
   border-bottom: none;
 }
 
+/* Sidebar Toggle & Responsive */
+.sidebar-toggle { display: none; position: fixed; left: 0; top: 50%; transform: translateY(-50%); z-index: 1001; background: #1e3a8a; color: white; border: none; border-radius: 0 8px 8px 0; padding: 12px 8px; cursor: pointer; align-items: center; justify-content: center; box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1); transition: all 0.3s ease; width: 36px; height: 48px; }
+.sidebar-toggle.active { left: 250px; border-radius: 8px 0 0 8px; }
+.sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.4); z-index: 999; }
+
+@media (max-width: 1024px) {
+  .sidebar-toggle { display: flex; }
+  .layout.sidebar-open .sidebar-overlay { display: block; }
+  .sidebar { position: fixed; top: 0; left: 0; height: 100vh; max-height: 100vh; width: 260px; z-index: 1000; transform: translateX(-100%); transition: transform 0.3s ease; overflow: hidden; padding: 12px; box-sizing: border-box; display: flex; flex-direction: column; }
+  .layout.sidebar-open .sidebar { transform: translateX(0); }
+  .brand { margin-bottom: 20px; margin-top: 5px; flex-shrink: 0; }
+  .logo { width: 32px; height: 32px; }
+  .titlelogo { font-size: 18px; }
+  .sidebar nav { flex: 1; overflow-y: auto; margin-bottom: 10px; }
+  .sidebar nav a { padding: 10px 12px; margin-bottom: 4px; font-size: 14px; }
+  .icon-sidebar { width: 22px; height: 22px; }
+  .logout { margin-top: auto; font-size: 14px; padding: 10px 12px; flex-shrink: 0; }
+  
+  .main { width: 100%; padding: 0 15px 20px 15px; }
+  .header { margin: 0 -15px 24px -15px; padding: 16px 15px; }
+  .header input { width: 200px; font-size: 16px; }
+  .icon-header { width: 24px; height: 24px; padding: 8px; }
+  .badge { font-size: 14px; }
+  .avatar { width: 36px; height: 36px; font-size: 14px; }
+  .username { font-size: 14px; }
+  
+  h1 { font-size: 28px; }
+  .subtitle { font-size: 14px; }
+  
+  .cards { grid-template-columns: repeat(2, 1fr); }
+  .charts { grid-template-columns: 1fr; }
+}
 </style>

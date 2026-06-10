@@ -23,12 +23,8 @@ const props = defineProps({
 })
 
 const chartData = computed(() => {
-  const labels = props.range === 'Monthly'
-    ? ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-    : ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
-
   return {
-    labels,
+    labels: props.data?.labels || [],
     datasets: [
       {
         label: 'Revenue ($)',
@@ -72,15 +68,9 @@ const options = {
 
   scales: {
     x: {
-      grid: {
-        display: true,
-        borderDash: [5, 5]
-      }
+      display: false
     },
     y: {
-      grid: {
-        borderDash: [5, 5]
-      },
       beginAtZero: true
     }
   }

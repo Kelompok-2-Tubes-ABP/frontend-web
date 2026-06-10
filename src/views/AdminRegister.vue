@@ -8,6 +8,7 @@ import inputPhone from "@/assets/icon-inputphone.svg"
 import inputPass from "@/assets/icon-inputpass.svg"
 import eyeOn from '@/assets/icon-eyeon.svg'
 import eyeOff from '@/assets/icon-eyeoff.svg'
+import { API_BASE } from '../../services/api.js';
 import axios from "axios"
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
@@ -74,7 +75,7 @@ const submitForm = async () => {
   if (!valid) return
 
   try {
-    const res = await axios.post("http://localhost:8080/auth/register", {
+    const res = await axios.post(`${API_BASE}/auth/register`, {
       username: form.value.username,
       email: form.value.email,
       password: form.value.password
@@ -106,7 +107,7 @@ const verifyOTP = async () => {
   }
 
   try {
-    const res = await axios.post("http://localhost:8080/auth/verify/code", {
+    const res = await axios.post(`${API_BASE}/auth/verify/code`, {
       code: otpCode.value
     })
 
@@ -133,7 +134,7 @@ const resendSuccess = ref("")
 
 const resendOTP = async () => {
   try {
-    await axios.post("http://localhost:8080/auth/verify/resend", {
+    await axios.post(`${API_BASE}/auth/verify/resend`, {
       email: form.value.email
     })
 
