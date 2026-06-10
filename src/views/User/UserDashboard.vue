@@ -1058,6 +1058,26 @@ onMounted(() => {
   cursor: pointer;
 }
 
+@media (max-width: 900px) {
+  .main-wrapper {
+    margin-left: 0;
+    padding-top: 120px;
+  }
+
+  .topbar {
+    left: 0;
+    width: 100%;
+  }
+
+  .topbar-header {
+    margin-bottom: 10px;
+  }
+
+  .notif {
+    margin-right: 20px;
+  }
+}
+
 @media (max-width: 1200px) {
   .grid-cards {
     grid-template-columns: 1fr;

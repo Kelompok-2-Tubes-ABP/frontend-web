@@ -43,7 +43,7 @@ const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'applicati
 // Fetch Stats
 const fetchStats = async () => {
   try {
-    const res = await axios.get('http://localhost:8080/admin/dashboard', {
+    const res = await axios.get('http://localhost:8000/admin/dashboard', {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (res.data.status === 'success') {
@@ -59,7 +59,7 @@ const fetchTransactions = async () => {
   isLoading.value = true;
   error.value = null;
   try {
-    const res = await axios.get('http://localhost:8080/admin/transactions/all', {
+    const res = await axios.get('http://localhost:8000/admin/transactions/all', {
       headers: { Authorization: `Bearer ${token}` }
     });
     transactions.value = (res.data.data || []).map(trx => ({
@@ -115,7 +115,7 @@ const closeSidebarOnMobile = () => { if (window.innerWidth < 1024) isSidebarOpen
 // Logout
 const handleLogout = async () => {
   try {
-    await axios.post('http://localhost:8080/admin/logout', {}, { headers: { Authorization: `Bearer ${token}` } });
+    await axios.post('http://localhost:8000/admin/logout', {}, { headers: { Authorization: `Bearer ${token}` } });
   } catch (err) {
     console.error('Logout error:', err);
   } finally {
@@ -162,8 +162,6 @@ const formatDate = (dt) => {
     <main class="main">
       <!-- Header -->
       <div class="header">
-        <img :src="iconHeader" class="icon-header" alt="">
-        <input type="text" placeholder="Search users, transactions..." />
         <div class="user">
           <span class="role-badge">Superadmin</span>
           <img :src="iconNotifications2" class="icon-header" alt="">

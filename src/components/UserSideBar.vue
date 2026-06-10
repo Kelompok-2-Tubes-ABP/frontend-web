@@ -49,6 +49,21 @@ const formatRupiah = (value) => {
 };
 
 /* =========================
+   SIDEBAR TOGGLE STATE
+========================= */
+const isSidebarOpen = ref(false);
+
+const toggleSidebar = () => {
+  isSidebarOpen.value = !isSidebarOpen.value;
+};
+
+const closeSidebarOnMobile = () => {
+  if (window.innerWidth < 900) {
+    isSidebarOpen.value = false;
+  }
+};
+
+/* =========================
    LOAD FROM LOCAL STORAGE
 ========================= */
 const loadSidebarFromLocalStorage = () => {
@@ -219,7 +234,22 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <aside class="sidebar">
+  <!-- Sidebar Toggle Button (Mobile) -->
+  <button 
+    class="sidebar-toggle" 
+    @click="toggleSidebar" 
+    :class="{ 'active': isSidebarOpen }"
+    :aria-label="isSidebarOpen ? 'Close sidebar' : 'Open sidebar'"
+  >
+    <svg v-if="!isSidebarOpen" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+    <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+
+  <!-- Overlay for Mobile -->
+  <div v-if="isSidebarOpen" class="sidebar-overlay" @click="closeSidebarOnMobile"></div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" :class="{ 'sidebar-open': isSidebarOpen }">
     <!-- Logo -->
     <div class="logo-section">
       <h1>FinanceApp</h1>
@@ -246,6 +276,7 @@ onUnmounted(() => {
         :to="item.path"
         class="menu-item"
         active-class="active"
+        @click="closeSidebarOnMobile"
       >
         <component :is="item.icon" :size="20" />
         <span>{{ item.name }}</span>
@@ -263,6 +294,49 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+/* Sidebar Toggle Button (Visible only on mobile) */
+.sidebar-toggle {
+  display: none;
+  position: fixed;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1001;
+  background: #4f46e5;
+  color: white;
+  border: none;
+  border-radius: 0 8px 8px 0;
+  padding: 12px 8px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  width: 36px;
+  height: 48px;
+}
+
+.sidebar-toggle:hover {
+  background: #6366f1;
+}
+
+.sidebar-toggle.active {
+  left: 260px;
+  border-radius: 8px 0 0 8px;
+}
+
+/* Overlay for mobile */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 999;
+}
+
 .sidebar {
   width: 260px;
   height: 100vh;
@@ -272,6 +346,8 @@ onUnmounted(() => {
   flex-direction: column;
   border-right: 1px solid #e5e5e5;
   position: fixed;
+  transition: transform 0.3s ease;
+  z-index: 1000;
 }
 
 /* Logo */
@@ -343,6 +419,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  overflow-y: auto;
 }
 
 .menu-item {
@@ -369,9 +446,10 @@ onUnmounted(() => {
 
 /* Sidebar Logout */
 .sidebar-logout {
-  margin-top: 16px;
-  padding-top: 16px;
+  margin-top: 12px;
+  padding-top: 12px;
   border-top: 1px solid #e5e7eb;
+  flex-shrink: 0;
 }
 
 .logout-btn {
@@ -409,5 +487,26 @@ onUnmounted(() => {
 .logout-btn:active {
   transform: translateY(0);
   box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
+}
+
+/* =========================
+   RESPONSIVE (Mobile)
+========================= */
+@media (max-width: 900px) {
+  .sidebar-toggle {
+    display: flex;
+  }
+
+  .sidebar-overlay {
+    display: block;
+  }
+
+  .sidebar {
+    transform: translateX(-100%);
+  }
+
+  .sidebar.sidebar-open {
+    transform: translateX(0);
+  }
 }
 </style>

@@ -182,8 +182,6 @@ const getActionClass = (type) => {
     <main class="main">
       <!-- Header -->
       <div class="header">
-        <img :src="iconHeader" class="icon-header" alt="">
-        <input type="text" placeholder="Search users, transactions..." />
         <div class="user">
           <span class="role-badge">Superadmin</span>
           <img :src="iconNotifications2" class="icon-header" alt="">

@@ -198,8 +198,6 @@ onMounted(() => {
     <main class="main">
       <!-- Header -->
       <div class="header">
-        <img :src="iconHeader" class="icon-header">
-        <input type="text" placeholder="Search users, transactions..." />
         <div class="user">
           <span class="badge">Superadmin</span>
           <img :src="iconNotifications2" class="icon-header">
