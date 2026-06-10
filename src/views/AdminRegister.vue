@@ -2,7 +2,7 @@
 import { ref } from "vue"
 import router from "@/router"
 import adminRegister from "@/assets/admin-register.svg"
-import inputName from "@/assets/Icon-inputname.svg"
+import inputName from "@/assets/icon-inputname.svg"
 import inputMail from "@/assets/icon-inputmail.svg"
 import inputPhone from "@/assets/icon-inputphone.svg"
 import inputPass from "@/assets/icon-inputpass.svg"
