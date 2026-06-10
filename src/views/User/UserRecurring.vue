@@ -6,7 +6,7 @@ import iconRecurring from '@/assets/User/icon-recurring.svg'
 /* =========================
    API CONFIG
 ========================= */
-const API_BASE_URL = 'http://localhost:8000'
+const API_BASE_URL = 'https://backend-financeapi.up.railway.app'
 
 /* =========================
    MODAL STATE
@@ -422,7 +422,7 @@ const updateRecurring = async () => {
     }
 
     const response = await fetch(`${API_BASE_URL}/recurring/${selectedRecurring.value.id}`, {
-      method: 'PUT',
+      method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
         ...(token && {

@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import UserSideBar from '@/components/UserSideBar.vue'
 import iconGoal from '@/assets/User/icon-goalBudget.svg'
 
-const API_BASE = 'http://localhost:8000'
+const API_BASE = 'https://backend-financeapi.up.railway.app'
 
 /* =========================
    MODAL STATE

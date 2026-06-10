@@ -12,7 +12,7 @@ import iconInvestasi from "@/assets/User/icon-investasi.svg";
 import iconPemasukan from "@/assets/User/icon-pemasukan.svg";
 import iconLainnya from "@/assets/User/icon-lainya.svg";
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = "https://backend-financeapi.up.railway.app";
 
 /* =========================
    MODAL TAMBAH STATE

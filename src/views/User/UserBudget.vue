@@ -10,7 +10,7 @@ import iconKesehatan from '@/assets/User/icon-kesehatan.svg'
 import iconInvestasi from '@/assets/User/icon-investasi.svg'
 import iconLainnya from '@/assets/User/icon-lainya.svg'
 
-const API_BASE = 'http://localhost:8000'
+const API_BASE = 'https://backend-financeapi.up.railway.app'
 
 /* =========================
    MODAL TAMBAH / EDIT CATEGORY BUDGET

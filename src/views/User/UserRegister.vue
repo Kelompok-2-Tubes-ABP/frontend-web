@@ -9,7 +9,7 @@ import iconMata from '@/assets/User/icon-mata.svg'
 
 const router = useRouter()
 
-const API_BASE_URL = 'http://localhost:8000'
+const API_BASE_URL = 'https://backend-financeapi.up.railway.app'
 
 const step = ref('register')
 // step: 'register' | 'otp'

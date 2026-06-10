@@ -19,7 +19,7 @@ const handleEnter = (event) => {
 
 
 const token = localStorage.getItem('token')
-const API_BASE = 'http://localhost:8000'
+const API_BASE = 'https://backend-financeapi.up.railway.app'
 const headers = {
   'Authorization': `Bearer ${token}`,
   'Content-Type': 'application/json'

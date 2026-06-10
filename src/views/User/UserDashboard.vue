@@ -190,7 +190,7 @@ const fetchUserProfile = async () => {
 
     const token = localStorage.getItem('token')
 
-    const response = await fetch('http://localhost:8000/profile/', {
+    const response = await fetch('https://backend-financeapi.up.railway.app/profile/', {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -219,7 +219,7 @@ const fetchSaldo = async () => {
 
     const token = localStorage.getItem('token')
 
-    const response = await fetch('http://localhost:8000/analytics/quick', {
+    const response = await fetch('https://backend-financeapi.up.railway.app/analytics/quick', {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -249,7 +249,7 @@ const fetchBudget = async () => {
 
     const token = localStorage.getItem('token')
 
-    const response = await fetch('http://localhost:8000/budget/summary', {
+    const response = await fetch('https://backend-financeapi.up.railway.app/budget/summary', {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -280,7 +280,7 @@ const fetchSavingSummary = async () => {
     loadingProfile.value = true
 
     const token = localStorage.getItem('token')
-    const response = await fetch('http://localhost:8000/savings_goal/summary', {
+    const response = await fetch('https://backend-financeapi.up.railway.app/savings_goal/summary', {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -309,7 +309,7 @@ const fetchSavingGoals = async () => {
 
     const token = localStorage.getItem('token')
 
-    const response = await fetch('http://localhost:8000/savings_goal/get', {
+    const response = await fetch('https://backend-financeapi.up.railway.app/savings_goal/get', {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -341,7 +341,7 @@ const fetchPengeluaranTerbesar = async () => {
 
     const token = localStorage.getItem('token')
 
-    const response = await fetch('http://localhost:8000/analytics/', {
+    const response = await fetch('https://backend-financeapi.up.railway.app/analytics/', {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -384,7 +384,7 @@ const fetchRecentTransactions = async () => {
 
     const token = localStorage.getItem('token')
 
-    const response = await fetch('http://localhost:8000/transaction/', {
+    const response = await fetch('https://backend-financeapi.up.railway.app/transaction/', {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -419,7 +419,7 @@ const fetchPortfolio = async () => {
   try {
     const token = localStorage.getItem('token')
 
-    const response = await fetch('http://localhost:8000/investment/portfolio', {
+    const response = await fetch('https://backend-financeapi.up.railway.app/investment/portfolio', {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

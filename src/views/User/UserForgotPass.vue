@@ -5,7 +5,7 @@ import iconEmail from '@/assets/User/icon-email.svg'
 
 const router = useRouter()
 
-const API_BASE_URL = 'http://localhost:8000'
+const API_BASE_URL = 'https://backend-financeapi.up.railway.app'
 
 const step = ref('email')
 // step: 'email' | 'reset' | 'success'

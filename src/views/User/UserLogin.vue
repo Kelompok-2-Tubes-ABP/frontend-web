@@ -93,7 +93,7 @@ const submitLogin = async () => {
       Yang dihapus hanya action form,
       bukan fetch endpoint login-nya.
     */
-    const response = await fetch('http://localhost:8000/auth/login', {
+    const response = await fetch('https://backend-financeapi.up.railway.app/auth/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

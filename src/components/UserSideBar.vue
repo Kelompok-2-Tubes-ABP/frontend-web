@@ -141,7 +141,7 @@ const fetchSaldo = async (force = false) => {
   if (!token) return;
 
   try {
-    const response = await fetch("http://localhost:8000/analytics/quick", {
+    const response = await fetch("https://backend-financeapi.up.railway.app/analytics/quick", {
       method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,

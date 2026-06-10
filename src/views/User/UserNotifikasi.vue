@@ -8,7 +8,7 @@ import iconTrendingDown from '@/assets/User/icon-TrendingDown.svg'
 import iconGoal from '@/assets/User/icon-goals.svg'
 import iconNotifications from '@/assets/icon-notifications.svg'
 
-const API_BASE = 'http://localhost:8000/api/notifications/feed'
+const API_BASE = 'https://backend-financeapi.up.railway.app/api/notifications/feed'
 const token = localStorage.getItem('token') || sessionStorage.getItem('token')
 
 const notificationGroups = ref([])

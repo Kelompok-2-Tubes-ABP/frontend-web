@@ -7,7 +7,7 @@ import iconBIll from '@/assets/User/icon-bill.svg'
 /* =========================
   API CONFIG
 ========================= */
-const API_BASE_URL = 'http://localhost:8000'
+const API_BASE_URL = 'https://backend-financeapi.up.railway.app'
 
 /* =========================
   DEFAULT ICON / COLOR

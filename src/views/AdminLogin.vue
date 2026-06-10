@@ -47,7 +47,7 @@ const submitForm = async() => {
   if (!valid) return
 
   try{
-    const res = await axios.post("http://localhost:8000/admin/login", {
+    const res = await axios.post("https://backend-financeapi.up.railway.app/admin/login", {
       email: form.value.email,
       password: form.value.password
     })
