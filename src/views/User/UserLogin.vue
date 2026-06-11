@@ -77,6 +77,13 @@ const validateForm = () => {
   return Object.keys(errors.value).length === 0
 }
 
+const USER_LOGIN_URL = 'https://backend-financeapi.up.railway.app/auth/login'
+const ADMIN_LOGIN_URL = 'https://backend-financeapi.up.railway.app/admin/login'
+// ganti ADMIN_LOGIN_URL sesuai endpoint login admin kamu
+
+const ADMIN_EMAIL = 'admin@financeapi.com'
+const ADMIN_PASSWORD = 'Password123'
+
 const submitLogin = async () => {
   syncAutofill()
 
@@ -88,25 +95,30 @@ const submitLogin = async () => {
   try {
     isLoading.value = true
 
-    /*
-      Endpoint login tetap dipakai di sini.
-      Yang dihapus hanya action form,
-      bukan fetch endpoint login-nya.
-    */
-    const response = await fetch('https://backend-financeapi.up.railway.app/auth/login', {
+    const inputEmail = email.value.trim()
+    const inputPassword = password.value
+
+    const isAdminLogin =
+      inputEmail === ADMIN_EMAIL &&
+      inputPassword === ADMIN_PASSWORD
+
+    const loginUrl = isAdminLogin ? ADMIN_LOGIN_URL : USER_LOGIN_URL
+
+    const response = await fetch(loginUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json'
       },
       body: JSON.stringify({
-        email: email.value.trim(),
-        password: password.value
+        email: inputEmail,
+        password: inputPassword
       })
     })
 
     const data = await response.json().catch(() => ({}))
 
+    console.log('LOGIN TYPE:', isAdminLogin ? 'ADMIN' : 'USER')
     console.log('STATUS:', response.status)
     console.log('RESPONSE:', data)
 
@@ -126,25 +138,26 @@ const submitLogin = async () => {
     }
 
     localStorage.setItem('token', token)
+    localStorage.setItem('role', isAdminLogin ? 'admin' : 'user')
 
-    /*
-      Remember Me hanya simpan email.
-      Password tidak disimpan manual.
-      Password disimpan oleh Google/Chrome Password Manager
-      kalau user memilih Save Password dari browser.
-    */
     if (rememberMe.value) {
-      localStorage.setItem('remember_email', email.value.trim())
+      localStorage.setItem('remember_email', inputEmail)
     } else {
       localStorage.removeItem('remember_email')
     }
 
     alertType.value = 'success'
-    alertMessage.value = 'Login berhasil!'
+    alertMessage.value = isAdminLogin
+      ? 'Login admin berhasil!'
+      : 'Login berhasil!'
 
     setTimeout(() => {
-      router.push('/userDashboard')
-    }, 3000)
+      if (isAdminLogin) {
+        router.push('/adminDashboard')
+      } else {
+        router.push('/userDashboard')
+      }
+    }, 1000)
   } catch (error) {
     console.error('Login error:', error)
 

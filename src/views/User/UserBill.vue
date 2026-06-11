@@ -647,7 +647,7 @@ const payBill = async () => {
     console.log('Pay bill payload:', payload)
 
     const response = await fetch(`${API_BASE_URL}/bill/${billId}/pay`, {
-      method: 'PATCH',
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...(token && {
